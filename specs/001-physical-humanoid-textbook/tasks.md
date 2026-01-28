@@ -170,18 +170,18 @@
 
 ### Implementation for User Story 2
 
-- [ ] T069 [US2] Query Context7 MCP for ROS 2 curriculum alignment
-- [ ] T070 [US2] Write learning objectives (3-5 measurable goals) in docs/02-ros2-robotic-nervous-system/index.mdx
+- [x] T069 [US2] Query Context7 MCP for ROS 2 curriculum alignment
+- [x] T070 [US2] Write learning objectives (3-5 measurable goals) in docs/02-ros2-robotic-nervous-system/index.mdx
 - [ ] T071 [US2] Create architecture diagram at docs/02-ros2-robotic-nervous-system/assets/ros2-architecture.png
-- [ ] T072 [US2] Write Computation Graph section (nodes, topics) in docs/02-ros2-robotic-nervous-system/index.mdx
-- [ ] T073 [US2] Write Services and Actions section in docs/02-ros2-robotic-nervous-system/index.mdx
-- [ ] T074 [US2] Write rclpy Code Examples section with publisher/subscriber in docs/02-ros2-robotic-nervous-system/index.mdx
-- [ ] T075 [US2] Add interactive code playground for ROS 2 examples in docs/02-ros2-robotic-nervous-system/index.mdx
-- [ ] T076 [US2] Add quiz on ROS 2 concepts in docs/02-ros2-robotic-nervous-system/index.mdx
-- [ ] T077 [US2] Write Common Failure Modes section (DDS, timing, namespace) in docs/02-ros2-robotic-nervous-system/index.mdx
-- [ ] T078 [US2] Document hardware requirements (Ubuntu 22.04, ROS 2 Humble) in docs/02-ros2-robotic-nervous-system/index.mdx
-- [ ] T079 [US2] Validate chapter independence
-- [ ] T080 [US2] Commit Chapter 2 via GitHub MCP
+- [x] T072 [US2] Write Computation Graph section (nodes, topics) in docs/02-ros2-robotic-nervous-system/index.mdx
+- [x] T073 [US2] Write Services and Actions section in docs/02-ros2-robotic-nervous-system/index.mdx
+- [x] T074 [US2] Write rclpy Code Examples section with publisher/subscriber in docs/02-ros2-robotic-nervous-system/index.mdx
+- [x] T075 [US2] Add interactive code playground for ROS 2 examples in docs/02-ros2-robotic-nervous-system/index.mdx
+- [x] T076 [US2] Add quiz on ROS 2 concepts in docs/02-ros2-robotic-nervous-system/index.mdx
+- [x] T077 [US2] Write Common Failure Modes section (DDS, timing, namespace) in docs/02-ros2-robotic-nervous-system/index.mdx
+- [x] T078 [US2] Document hardware requirements (Ubuntu 22.04, ROS 2 Humble) in docs/02-ros2-robotic-nervous-system/index.mdx
+- [x] T079 [US2] Validate chapter independence
+- [x] T080 [US2] Commit Chapter 2 via GitHub MCP
 
 **Checkpoint**: Chapter 2 complete and independently testable.
 
