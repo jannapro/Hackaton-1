@@ -10,102 +10,1254 @@ keywords:
   - manipulation
   - grasping
   - Unitree H1
+  - ZMP
+  - whole-body control
 description: "Bipedal walking, balance control, and manipulation with Unitree H1 humanoid robot."
 ---
 
+import Quiz from '@site/src/components/Quiz';
+import CodePlayground from '@site/src/components/CodePlayground';
+import CollapsibleSection from '@site/src/components/CollapsibleSection';
+
 # Humanoid Locomotion & Manipulation
+
+**Estimated Time**: 90-120 minutes
+
+Humanoid robots face the fundamental challenge of dynamic stability—unlike wheeled robots, they must actively maintain balance while moving. This chapter explores the control architectures that enable bipedal walking, dynamic balance recovery, and coordinated manipulation. We'll implement these concepts using the Unitree H1 humanoid as our reference platform.
+
+---
 
 ## Learning Objectives
 
 By the end of this chapter, you will be able to:
 
-1. **[LO-01]**: [Placeholder - Implement balance control]
-2. **[LO-02]**: [Placeholder - Generate walking gaits]
-3. **[LO-03]**: [Placeholder - Plan and execute grasps]
-4. **[LO-04]**: [Placeholder - Implement force control]
+1. **[LO-01]** (Understand): Explain the Zero Moment Point (ZMP) criterion and its role in maintaining bipedal stability.
+
+2. **[LO-02]** (Apply): Implement a balance controller using center of mass (CoM) tracking and ankle torque strategies.
+
+3. **[LO-03]** (Apply): Generate walking gaits using footstep planning and trajectory interpolation.
+
+4. **[LO-04]** (Analyze): Analyze grasp planning strategies and select appropriate approaches for different object geometries.
+
+5. **[LO-05]** (Apply): Implement impedance control for compliant manipulation tasks requiring force regulation.
 
 ---
 
 ## System Architecture
 
-[Placeholder: Locomotion and manipulation architecture]
-
 <!-- Architecture diagram placeholder - to be added during chapter authoring -->
+
+Humanoid control follows a hierarchical architecture separating high-level planning from low-level execution:
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                   Humanoid Control Architecture                          │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                          │
+│  ┌─────────────────────────────────────────────────────────────────────┐│
+│  │                     Task Planner (1-10 Hz)                          ││
+│  │  • Goal specification     • Behavior sequencing                     ││
+│  └────────────────────────────────┬────────────────────────────────────┘│
+│                                   │                                      │
+│  ┌────────────────────────────────▼────────────────────────────────────┐│
+│  │                  Motion Planner (10-50 Hz)                          ││
+│  │  • Footstep planning    • Arm trajectory    • Collision avoidance  ││
+│  └────────────────────────────────┬────────────────────────────────────┘│
+│                                   │                                      │
+│  ┌────────────────────────────────▼────────────────────────────────────┐│
+│  │              Whole-Body Controller (100-500 Hz)                     ││
+│  │  ┌─────────────┐  ┌─────────────┐  ┌──────────────────┐            ││
+│  │  │   Balance   │  │    Gait     │  │   Manipulation   │            ││
+│  │  │  Controller │  │  Generator  │  │    Controller    │            ││
+│  │  └──────┬──────┘  └──────┬──────┘  └────────┬─────────┘            ││
+│  │         └────────────────┴───────────────────┘                      ││
+│  │                          │                                          ││
+│  │                          ▼                                          ││
+│  │              ┌───────────────────────────┐                          ││
+│  │              │  Inverse Dynamics / QP    │                          ││
+│  │              │  (Joint Torque Solver)    │                          ││
+│  │              └─────────────┬─────────────┘                          ││
+│  └────────────────────────────┼────────────────────────────────────────┘│
+│                               │                                          │
+│  ┌────────────────────────────▼────────────────────────────────────────┐│
+│  │              Joint Controller (1-10 kHz)                            ││
+│  │  • PD control      • Current control      • Safety limits           ││
+│  └─────────────────────────────────────────────────────────────────────┘│
+│                                                                          │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+**Key Insight**: Each layer operates at a different frequency—task planning at human interaction speeds (1-10 Hz), motion planning for smooth trajectories (10-50 Hz), whole-body control for dynamic balance (100-500 Hz), and joint control for actuator dynamics (1-10 kHz).
 
 ---
 
 ## Balance Control
 
-[Placeholder: Balance control content - 500-800 tokens]
+Balance control is the foundation of humanoid locomotion. Without it, the robot falls.
+
+### Zero Moment Point (ZMP)
+
+The Zero Moment Point is the point on the ground where the sum of horizontal moments equals zero. For stable balance, the ZMP must remain within the support polygon formed by the feet.
+
+```python
+import numpy as np
+from dataclasses import dataclass
+
+@dataclass
+class BodyState:
+    """Robot body state for balance computation."""
+    com_position: np.ndarray   # Center of mass position [x, y, z]
+    com_velocity: np.ndarray   # Center of mass velocity [vx, vy, vz]
+    com_acceleration: np.ndarray  # CoM acceleration [ax, ay, az]
+    foot_positions: list[np.ndarray]  # List of foot contact positions
+
+
+def compute_zmp(state: BodyState, gravity: float = 9.81) -> np.ndarray:
+    """
+    Compute Zero Moment Point from center of mass dynamics.
+
+    The ZMP is where ground reaction forces act to keep the robot balanced.
+    For stable walking, ZMP must stay inside the support polygon.
+
+    Args:
+        state: Current robot state
+        gravity: Gravitational acceleration (m/s^2)
+
+    Returns:
+        ZMP position [x, y] on ground plane
+    """
+    com = state.com_position
+    com_ddot = state.com_acceleration
+
+    # ZMP equations derived from angular momentum balance
+    # ZMP_x = CoM_x - (CoM_z * CoM_ddot_x) / (CoM_ddot_z + g)
+    # ZMP_y = CoM_y - (CoM_z * CoM_ddot_y) / (CoM_ddot_z + g)
+
+    denominator = com_ddot[2] + gravity
+
+    zmp_x = com[0] - (com[2] * com_ddot[0]) / denominator
+    zmp_y = com[1] - (com[2] * com_ddot[1]) / denominator
+
+    return np.array([zmp_x, zmp_y])
+
+
+def is_stable(zmp: np.ndarray, support_polygon: np.ndarray) -> bool:
+    """
+    Check if ZMP is inside the support polygon.
+
+    Args:
+        zmp: ZMP position [x, y]
+        support_polygon: Nx2 array of polygon vertices
+
+    Returns:
+        True if ZMP is inside support polygon
+    """
+    from shapely.geometry import Point, Polygon
+
+    point = Point(zmp)
+    polygon = Polygon(support_polygon)
+
+    return polygon.contains(point)
+```
+
+### Center of Mass Control
+
+Balance controllers track the center of mass to prevent falls:
+
+```python
+import numpy as np
+from typing import Tuple
+
+class CoMBalanceController:
+    """
+    Center of Mass balance controller using ankle torque strategy.
+
+    Controls CoM position by modulating ankle joint torques,
+    keeping the robot upright during standing and slow walking.
+    """
+
+    def __init__(
+        self,
+        mass: float,
+        com_height: float,
+        kp: np.ndarray = np.array([100.0, 100.0]),
+        kd: np.ndarray = np.array([20.0, 20.0])
+    ):
+        """
+        Args:
+            mass: Total robot mass (kg)
+            com_height: Nominal CoM height (m)
+            kp: Proportional gains for [x, y] directions
+            kd: Derivative gains for [x, y] directions
+        """
+        self.mass = mass
+        self.com_height = com_height
+        self.kp = kp
+        self.kd = kd
+        self.gravity = 9.81
+
+    def compute_ankle_torque(
+        self,
+        com_position: np.ndarray,
+        com_velocity: np.ndarray,
+        com_desired: np.ndarray
+    ) -> Tuple[float, float]:
+        """
+        Compute ankle torques to regulate CoM position.
+
+        Uses linear inverted pendulum model to compute required
+        ankle torques for CoM tracking.
+
+        Args:
+            com_position: Current CoM [x, y, z]
+            com_velocity: Current CoM velocity [vx, vy, vz]
+            com_desired: Desired CoM position [x, y, z]
+
+        Returns:
+            Tuple of (ankle_roll_torque, ankle_pitch_torque)
+        """
+        # Position and velocity errors (sagittal and frontal planes)
+        pos_error = com_desired[:2] - com_position[:2]
+        vel_error = -com_velocity[:2]  # Desired velocity is zero for standing
+
+        # PD control law
+        com_acceleration_desired = self.kp * pos_error + self.kd * vel_error
+
+        # Convert CoM acceleration to ankle torques
+        # Using inverted pendulum: τ = m * h * a + m * g * Δx
+        ankle_pitch_torque = (
+            self.mass * self.com_height * com_acceleration_desired[0] +
+            self.mass * self.gravity * pos_error[0]
+        )
+        ankle_roll_torque = (
+            self.mass * self.com_height * com_acceleration_desired[1] +
+            self.mass * self.gravity * pos_error[1]
+        )
+
+        return ankle_roll_torque, ankle_pitch_torque
+
+    def compute_hip_strategy(
+        self,
+        com_position: np.ndarray,
+        com_velocity: np.ndarray,
+        threshold: float = 0.05
+    ) -> float:
+        """
+        Compute hip torque for large perturbations (hip strategy).
+
+        When ankle strategy is insufficient, bend at the hips
+        to recover balance.
+
+        Args:
+            com_position: Current CoM position
+            com_velocity: Current CoM velocity
+            threshold: Error threshold to activate hip strategy
+
+        Returns:
+            Hip pitch torque
+        """
+        error_magnitude = np.linalg.norm(com_position[:2])
+
+        if error_magnitude > threshold:
+            # Aggressive hip correction
+            hip_torque = -50.0 * com_position[0] - 10.0 * com_velocity[0]
+            return hip_torque
+
+        return 0.0
+```
+
+<CollapsibleSection title="Balance Strategies: Ankle vs. Hip vs. Step">
+
+Humans use three balance strategies depending on perturbation magnitude:
+
+1. **Ankle Strategy** (small perturbations)
+   - Ankle torques adjust body lean
+   - Works when CoM stays over support polygon
+   - Fast response, low energy cost
+
+2. **Hip Strategy** (medium perturbations)
+   - Hip flexion/extension rotates upper body
+   - Generates horizontal momentum to counter fall
+   - More aggressive than ankle strategy
+
+3. **Stepping Strategy** (large perturbations)
+   - Take a step to place foot under falling CoM
+   - Only option when CoM leaves support polygon
+   - Requires footstep planning
+
+Most humanoid controllers blend these strategies based on error magnitude.
+
+</CollapsibleSection>
 
 ---
 
 ## Gait Generation
 
-[Placeholder: Gait generation content - 500-800 tokens]
+Walking requires coordinated footstep placement and swing leg trajectories.
+
+### Footstep Planning
+
+```python
+import numpy as np
+from dataclasses import dataclass
+from typing import List
+
+@dataclass
+class Footstep:
+    """Single footstep in a walking sequence."""
+    position: np.ndarray  # [x, y, z] foot position
+    orientation: float    # Yaw angle (radians)
+    foot: str            # "left" or "right"
+    duration: float      # Step duration (seconds)
+
+
+class FootstepPlanner:
+    """Plans footstep sequences for walking."""
+
+    def __init__(
+        self,
+        step_length: float = 0.3,
+        step_width: float = 0.2,
+        step_height: float = 0.05,
+        step_duration: float = 0.5
+    ):
+        """
+        Args:
+            step_length: Forward step distance (m)
+            step_width: Lateral foot separation (m)
+            step_height: Foot lift height (m)
+            step_duration: Time per step (s)
+        """
+        self.step_length = step_length
+        self.step_width = step_width
+        self.step_height = step_height
+        self.step_duration = step_duration
+
+    def plan_straight_walk(
+        self,
+        start_position: np.ndarray,
+        distance: float,
+        start_foot: str = "right"
+    ) -> List[Footstep]:
+        """
+        Plan footsteps for straight-line walking.
+
+        Args:
+            start_position: Starting position [x, y]
+            distance: Total walking distance (m)
+            start_foot: Which foot to step with first
+
+        Returns:
+            List of footsteps
+        """
+        footsteps = []
+        num_steps = int(np.ceil(distance / self.step_length))
+        current_foot = start_foot
+
+        for i in range(num_steps):
+            x = start_position[0] + (i + 1) * self.step_length
+            y_offset = self.step_width / 2 if current_foot == "left" else -self.step_width / 2
+            y = start_position[1] + y_offset
+
+            footsteps.append(Footstep(
+                position=np.array([x, y, 0.0]),
+                orientation=0.0,
+                foot=current_foot,
+                duration=self.step_duration
+            ))
+
+            # Alternate feet
+            current_foot = "left" if current_foot == "right" else "right"
+
+        return footsteps
+
+    def plan_turn(
+        self,
+        center: np.ndarray,
+        angle: float,
+        radius: float,
+        start_foot: str = "right"
+    ) -> List[Footstep]:
+        """
+        Plan footsteps for turning in place or arc walking.
+
+        Args:
+            center: Turn center position
+            angle: Total turn angle (radians, positive = left)
+            radius: Turn radius (0 for in-place turn)
+            start_foot: Which foot to step with first
+
+        Returns:
+            List of footsteps
+        """
+        footsteps = []
+        # Simplified: divide turn into small angular steps
+        angular_step = 0.2  # radians per step
+        num_steps = int(np.ceil(abs(angle) / angular_step))
+        sign = 1 if angle > 0 else -1
+
+        current_foot = start_foot
+        current_angle = 0.0
+
+        for i in range(num_steps):
+            current_angle += sign * angular_step
+
+            # Position on arc
+            if radius > 0:
+                x = center[0] + radius * np.sin(current_angle)
+                y = center[1] + radius * (1 - np.cos(current_angle))
+            else:
+                x = center[0]
+                y = center[1]
+
+            y_offset = self.step_width / 2 if current_foot == "left" else -self.step_width / 2
+            y += y_offset * np.cos(current_angle)
+            x += y_offset * np.sin(current_angle)
+
+            footsteps.append(Footstep(
+                position=np.array([x, y, 0.0]),
+                orientation=current_angle,
+                foot=current_foot,
+                duration=self.step_duration
+            ))
+
+            current_foot = "left" if current_foot == "right" else "right"
+
+        return footsteps
+```
+
+### Swing Leg Trajectory
+
+```python
+import numpy as np
+
+def generate_swing_trajectory(
+    start: np.ndarray,
+    end: np.ndarray,
+    height: float,
+    duration: float,
+    dt: float = 0.01
+) -> np.ndarray:
+    """
+    Generate smooth swing leg trajectory using cubic spline.
+
+    Creates a trajectory that lifts the foot, swings forward,
+    and lands smoothly at the target position.
+
+    Args:
+        start: Starting foot position [x, y, z]
+        end: Ending foot position [x, y, z]
+        height: Maximum foot lift height (m)
+        duration: Swing phase duration (s)
+        dt: Trajectory timestep (s)
+
+    Returns:
+        Nx3 array of foot positions over time
+    """
+    n_points = int(duration / dt)
+    t = np.linspace(0, 1, n_points)
+
+    # Horizontal: smooth interpolation
+    x = start[0] + (end[0] - start[0]) * (3 * t**2 - 2 * t**3)
+    y = start[1] + (end[1] - start[1]) * (3 * t**2 - 2 * t**3)
+
+    # Vertical: parabolic arc peaking at midpoint
+    z = start[2] + 4 * height * t * (1 - t)
+
+    trajectory = np.column_stack([x, y, z])
+    return trajectory
+
+
+def generate_velocity_profile(
+    trajectory: np.ndarray,
+    dt: float
+) -> np.ndarray:
+    """
+    Compute velocity profile from position trajectory.
+
+    Args:
+        trajectory: Nx3 position trajectory
+        dt: Time step
+
+    Returns:
+        Nx3 velocity trajectory
+    """
+    velocity = np.diff(trajectory, axis=0) / dt
+    # Pad to match length
+    velocity = np.vstack([velocity, velocity[-1]])
+    return velocity
+```
+
+### Complete Gait State Machine
+
+```python
+from enum import Enum
+from dataclasses import dataclass
+from typing import Optional
+
+class GaitPhase(Enum):
+    """Phases of bipedal walking gait."""
+    DOUBLE_SUPPORT = "double_support"
+    LEFT_SWING = "left_swing"
+    RIGHT_SWING = "right_swing"
+
+
+@dataclass
+class GaitState:
+    """Current state of the gait generator."""
+    phase: GaitPhase
+    phase_time: float
+    left_foot_target: np.ndarray
+    right_foot_target: np.ndarray
+    com_target: np.ndarray
+
+
+class GaitStateMachine:
+    """Finite state machine for walking gait generation."""
+
+    def __init__(
+        self,
+        swing_duration: float = 0.4,
+        double_support_duration: float = 0.1,
+        step_height: float = 0.05
+    ):
+        self.swing_duration = swing_duration
+        self.double_support_duration = double_support_duration
+        self.step_height = step_height
+
+        self.current_phase = GaitPhase.DOUBLE_SUPPORT
+        self.phase_timer = 0.0
+        self.footsteps: List[Footstep] = []
+        self.current_step_index = 0
+
+    def update(self, dt: float) -> GaitState:
+        """
+        Update gait state machine.
+
+        Args:
+            dt: Time step (seconds)
+
+        Returns:
+            Current gait state with foot and CoM targets
+        """
+        self.phase_timer += dt
+
+        # Check for phase transitions
+        if self.current_phase == GaitPhase.DOUBLE_SUPPORT:
+            if self.phase_timer >= self.double_support_duration:
+                self._transition_to_swing()
+        else:
+            if self.phase_timer >= self.swing_duration:
+                self._transition_to_double_support()
+
+        # Generate targets based on current phase
+        return self._compute_targets()
+
+    def _transition_to_swing(self):
+        """Transition from double support to swing phase."""
+        if self.current_step_index >= len(self.footsteps):
+            return  # No more steps
+
+        next_step = self.footsteps[self.current_step_index]
+        if next_step.foot == "left":
+            self.current_phase = GaitPhase.LEFT_SWING
+        else:
+            self.current_phase = GaitPhase.RIGHT_SWING
+
+        self.phase_timer = 0.0
+
+    def _transition_to_double_support(self):
+        """Transition from swing to double support."""
+        self.current_phase = GaitPhase.DOUBLE_SUPPORT
+        self.phase_timer = 0.0
+        self.current_step_index += 1
+
+    def _compute_targets(self) -> GaitState:
+        """Compute foot and CoM targets for current phase."""
+        # Placeholder: compute based on footstep plan and phase
+        return GaitState(
+            phase=self.current_phase,
+            phase_time=self.phase_timer,
+            left_foot_target=np.zeros(3),
+            right_foot_target=np.zeros(3),
+            com_target=np.zeros(3)
+        )
+```
 
 ---
 
 ## Grasp Planning
 
-[Placeholder: Grasp planning content - 500-800 tokens]
+Manipulation requires planning hand trajectories and grasp configurations.
+
+### Grasp Types
+
+| Grasp Type | Use Case | Fingers | Stability |
+|------------|----------|---------|-----------|
+| **Power grasp** | Heavy objects, tools | All | High |
+| **Precision grasp** | Small objects | 2-3 | Medium |
+| **Pinch grasp** | Thin/flat objects | 2 | Low |
+| **Hook grasp** | Handles, bags | Curved fingers | High |
+
+### Grasp Planning Pipeline
+
+```python
+import numpy as np
+from dataclasses import dataclass
+from typing import List, Optional
+from enum import Enum
+
+class GraspType(Enum):
+    POWER = "power"
+    PRECISION = "precision"
+    PINCH = "pinch"
+
+
+@dataclass
+class GraspCandidate:
+    """A candidate grasp pose for an object."""
+    position: np.ndarray      # Grasp point [x, y, z]
+    orientation: np.ndarray   # Quaternion [w, x, y, z]
+    approach_direction: np.ndarray  # Approach vector
+    grasp_type: GraspType
+    quality_score: float      # 0-1 quality metric
+    gripper_width: float      # Required gripper opening
+
+
+class GraspPlanner:
+    """Plans grasps for manipulation tasks."""
+
+    def __init__(self, gripper_max_width: float = 0.1):
+        """
+        Args:
+            gripper_max_width: Maximum gripper opening (m)
+        """
+        self.gripper_max_width = gripper_max_width
+
+    def generate_grasp_candidates(
+        self,
+        object_pose: np.ndarray,
+        object_dimensions: np.ndarray,
+        num_candidates: int = 10
+    ) -> List[GraspCandidate]:
+        """
+        Generate candidate grasps for a box-shaped object.
+
+        Args:
+            object_pose: Object pose [x, y, z, qw, qx, qy, qz]
+            object_dimensions: Object size [width, height, depth]
+            num_candidates: Number of grasps to generate
+
+        Returns:
+            List of grasp candidates sorted by quality
+        """
+        candidates = []
+        obj_pos = object_pose[:3]
+
+        # Generate grasps along each graspable axis
+        for axis in range(3):
+            # Skip if object too wide for gripper
+            if object_dimensions[axis] > self.gripper_max_width:
+                continue
+
+            for sign in [-1, 1]:
+                # Approach from perpendicular directions
+                approach = np.zeros(3)
+                approach[(axis + 1) % 3] = sign
+
+                grasp_pos = obj_pos.copy()
+
+                # Quality based on stability (smaller dimension = more stable)
+                quality = 1.0 - (object_dimensions[axis] / self.gripper_max_width)
+
+                candidates.append(GraspCandidate(
+                    position=grasp_pos,
+                    orientation=self._approach_to_quaternion(approach),
+                    approach_direction=approach,
+                    grasp_type=GraspType.POWER if object_dimensions.max() > 0.05 else GraspType.PRECISION,
+                    quality_score=quality,
+                    gripper_width=object_dimensions[axis]
+                ))
+
+        # Sort by quality
+        candidates.sort(key=lambda g: g.quality_score, reverse=True)
+        return candidates[:num_candidates]
+
+    def _approach_to_quaternion(self, approach: np.ndarray) -> np.ndarray:
+        """Convert approach direction to gripper orientation quaternion."""
+        # Simplified: align gripper z-axis with approach
+        # Full implementation would use rotation matrices
+        z_axis = -approach / np.linalg.norm(approach)
+        y_axis = np.array([0, 0, 1]) if abs(z_axis[2]) < 0.9 else np.array([1, 0, 0])
+        x_axis = np.cross(y_axis, z_axis)
+        x_axis = x_axis / np.linalg.norm(x_axis)
+        y_axis = np.cross(z_axis, x_axis)
+
+        # Convert rotation matrix to quaternion
+        rotation_matrix = np.column_stack([x_axis, y_axis, z_axis])
+        return self._rotation_to_quaternion(rotation_matrix)
+
+    def _rotation_to_quaternion(self, R: np.ndarray) -> np.ndarray:
+        """Convert rotation matrix to quaternion [w, x, y, z]."""
+        trace = R[0, 0] + R[1, 1] + R[2, 2]
+        if trace > 0:
+            s = 0.5 / np.sqrt(trace + 1.0)
+            w = 0.25 / s
+            x = (R[2, 1] - R[1, 2]) * s
+            y = (R[0, 2] - R[2, 0]) * s
+            z = (R[1, 0] - R[0, 1]) * s
+        else:
+            # Degenerate cases
+            w, x, y, z = 1, 0, 0, 0
+        return np.array([w, x, y, z])
+
+
+def plan_grasp_trajectory(
+    current_pose: np.ndarray,
+    grasp: GraspCandidate,
+    approach_distance: float = 0.1
+) -> List[np.ndarray]:
+    """
+    Plan trajectory from current pose to grasp pose.
+
+    Returns waypoints: [current] -> [pre-grasp] -> [grasp]
+    """
+    pre_grasp_pos = grasp.position + grasp.approach_direction * approach_distance
+
+    waypoints = [
+        current_pose[:3],
+        pre_grasp_pos,
+        grasp.position
+    ]
+
+    return waypoints
+```
 
 ---
 
 ## Force Control
 
-[Placeholder: Force control content - 500-800 tokens]
+Manipulation often requires controlling contact forces rather than just positions.
+
+### Impedance Control
+
+```python
+import numpy as np
+from dataclasses import dataclass
+
+@dataclass
+class ImpedanceParams:
+    """Impedance control parameters."""
+    stiffness: np.ndarray   # Kp: 6D stiffness [linear, angular]
+    damping: np.ndarray     # Kd: 6D damping
+    inertia: np.ndarray     # Optional: desired inertia
+
+
+class ImpedanceController:
+    """
+    Cartesian impedance controller for compliant manipulation.
+
+    Implements the control law:
+    F = Kp * (x_d - x) + Kd * (v_d - v) + F_ff
+
+    This makes the end-effector behave like a mass-spring-damper system.
+    """
+
+    def __init__(
+        self,
+        stiffness: np.ndarray = np.array([500, 500, 500, 50, 50, 50]),
+        damping: np.ndarray = np.array([50, 50, 50, 5, 5, 5])
+    ):
+        """
+        Args:
+            stiffness: Cartesian stiffness [N/m, N/m, N/m, Nm/rad, Nm/rad, Nm/rad]
+            damping: Cartesian damping [Ns/m, Ns/m, Ns/m, Nms/rad, Nms/rad, Nms/rad]
+        """
+        self.Kp = np.diag(stiffness)
+        self.Kd = np.diag(damping)
+
+    def compute_force(
+        self,
+        position: np.ndarray,
+        velocity: np.ndarray,
+        position_desired: np.ndarray,
+        velocity_desired: np.ndarray = None,
+        force_feedforward: np.ndarray = None
+    ) -> np.ndarray:
+        """
+        Compute control force/torque.
+
+        Args:
+            position: Current end-effector pose [x, y, z, rx, ry, rz]
+            velocity: Current end-effector velocity
+            position_desired: Desired pose
+            velocity_desired: Desired velocity (default: zero)
+            force_feedforward: Feedforward force (default: zero)
+
+        Returns:
+            6D wrench [fx, fy, fz, tx, ty, tz]
+        """
+        if velocity_desired is None:
+            velocity_desired = np.zeros(6)
+        if force_feedforward is None:
+            force_feedforward = np.zeros(6)
+
+        pos_error = position_desired - position
+        vel_error = velocity_desired - velocity
+
+        # Impedance control law
+        wrench = self.Kp @ pos_error + self.Kd @ vel_error + force_feedforward
+
+        return wrench
+
+    def compute_joint_torques(
+        self,
+        wrench: np.ndarray,
+        jacobian: np.ndarray
+    ) -> np.ndarray:
+        """
+        Convert Cartesian wrench to joint torques.
+
+        Args:
+            wrench: 6D Cartesian wrench
+            jacobian: 6xN Jacobian matrix
+
+        Returns:
+            N-dimensional joint torque vector
+        """
+        # τ = J^T * F
+        return jacobian.T @ wrench
+
+
+class HybridForcePositionController:
+    """
+    Hybrid force/position controller for constrained tasks.
+
+    Controls force in contact direction, position in free directions.
+    Useful for tasks like polishing, insertion, or surface following.
+    """
+
+    def __init__(
+        self,
+        position_gains: np.ndarray,
+        force_gains: np.ndarray,
+        selection_matrix: np.ndarray
+    ):
+        """
+        Args:
+            position_gains: PD gains for position-controlled axes
+            force_gains: PI gains for force-controlled axes
+            selection_matrix: 6x6 diagonal matrix (1 = force, 0 = position)
+        """
+        self.Kp_pos = position_gains[:6]
+        self.Kd_pos = position_gains[6:]
+        self.Kp_force = force_gains[:6]
+        self.Ki_force = force_gains[6:]
+        self.S = selection_matrix  # Force selection
+        self.I = np.eye(6) - selection_matrix  # Position selection
+        self.force_integral = np.zeros(6)
+
+    def compute_control(
+        self,
+        position: np.ndarray,
+        velocity: np.ndarray,
+        force_measured: np.ndarray,
+        position_desired: np.ndarray,
+        force_desired: np.ndarray,
+        dt: float
+    ) -> np.ndarray:
+        """
+        Compute hybrid force/position control output.
+
+        Args:
+            position: Current pose
+            velocity: Current velocity
+            force_measured: Measured contact force
+            position_desired: Desired position (for position-controlled axes)
+            force_desired: Desired force (for force-controlled axes)
+            dt: Control timestep
+
+        Returns:
+            6D wrench command
+        """
+        # Position control term
+        pos_error = position_desired - position
+        pos_control = self.Kp_pos * pos_error - self.Kd_pos * velocity
+
+        # Force control term
+        force_error = force_desired - force_measured
+        self.force_integral += force_error * dt
+        force_control = self.Kp_force * force_error + self.Ki_force * self.force_integral
+
+        # Combine with selection matrices
+        wrench = self.I @ pos_control + self.S @ force_control
+
+        return wrench
+```
 
 ---
 
-## Practical Implementation
+## Practical Implementation: Unitree H1
 
-### Code Example: Unitree H1 Simulation
+### ROS 2 Control Interface
+
+The Unitree H1 uses low-level motor commands via ROS 2:
 
 ```python
 #!/usr/bin/env python3
 """
-Placeholder: Unitree H1 locomotion example
+Unitree H1 Humanoid Control Node
+
+Controls the H1 humanoid robot using low-level motor commands.
+Implements standing balance and basic walking.
 """
 
+import numpy as np
 import rclpy
 from rclpy.node import Node
+from unitree_go.msg import LowCmd, LowState, MotorCmd
+from geometry_msgs.msg import Twist
 
-# Placeholder implementation
+
+class H1ControlNode(Node):
+    """ROS 2 node for Unitree H1 control."""
+
+    # H1 has 19 actuated joints
+    NUM_JOINTS = 19
+
+    # Joint indices (example mapping)
+    JOINT_NAMES = {
+        'left_hip_yaw': 0,
+        'left_hip_roll': 1,
+        'left_hip_pitch': 2,
+        'left_knee': 3,
+        'left_ankle_pitch': 4,
+        'left_ankle_roll': 5,
+        'right_hip_yaw': 6,
+        'right_hip_roll': 7,
+        'right_hip_pitch': 8,
+        'right_knee': 9,
+        'right_ankle_pitch': 10,
+        'right_ankle_roll': 11,
+        'waist_yaw': 12,
+        'left_shoulder_pitch': 13,
+        'left_shoulder_roll': 14,
+        'left_elbow': 15,
+        'right_shoulder_pitch': 16,
+        'right_shoulder_roll': 17,
+        'right_elbow': 18,
+    }
+
+    def __init__(self):
+        super().__init__('h1_control')
+
+        # Default standing pose (joint angles in radians)
+        self.standing_pose = np.zeros(self.NUM_JOINTS)
+        self.standing_pose[self.JOINT_NAMES['left_knee']] = 0.5
+        self.standing_pose[self.JOINT_NAMES['right_knee']] = 0.5
+        self.standing_pose[self.JOINT_NAMES['left_hip_pitch']] = -0.25
+        self.standing_pose[self.JOINT_NAMES['right_hip_pitch']] = -0.25
+
+        # PD gains for position control
+        self.kp = np.ones(self.NUM_JOINTS) * 100.0
+        self.kd = np.ones(self.NUM_JOINTS) * 10.0
+
+        # Lower gains for arms
+        self.kp[13:19] = 50.0
+        self.kd[13:19] = 5.0
+
+        # Current state
+        self.joint_positions = np.zeros(self.NUM_JOINTS)
+        self.joint_velocities = np.zeros(self.NUM_JOINTS)
+
+        # Target
+        self.target_positions = self.standing_pose.copy()
+
+        # ROS interfaces
+        self.state_sub = self.create_subscription(
+            LowState, '/lowstate', self.state_callback, 10
+        )
+        self.cmd_pub = self.create_publisher(LowCmd, '/lowcmd', 10)
+        self.vel_sub = self.create_subscription(
+            Twist, '/cmd_vel', self.velocity_callback, 10
+        )
+
+        # Control loop at 500 Hz
+        self.control_timer = self.create_timer(0.002, self.control_loop)
+
+        self.get_logger().info('H1 control node initialized')
+
+    def state_callback(self, msg: LowState):
+        """Update joint state from robot feedback."""
+        for i in range(self.NUM_JOINTS):
+            self.joint_positions[i] = msg.motor_state[i].q
+            self.joint_velocities[i] = msg.motor_state[i].dq
+
+    def velocity_callback(self, msg: Twist):
+        """Handle velocity commands for walking."""
+        # Convert velocity command to walking target
+        # Simplified: adjust hip angles for forward/turning motion
+        forward_vel = msg.linear.x
+        turn_rate = msg.angular.z
+
+        # Modify target pose based on velocity
+        # This is a placeholder - real walking uses gait generator
+        hip_offset = forward_vel * 0.1  # Scale factor
+        self.target_positions[self.JOINT_NAMES['left_hip_pitch']] = -0.25 + hip_offset
+        self.target_positions[self.JOINT_NAMES['right_hip_pitch']] = -0.25 - hip_offset
+
+    def control_loop(self):
+        """Main control loop - runs at 500 Hz."""
+        cmd = LowCmd()
+
+        for i in range(self.NUM_JOINTS):
+            motor_cmd = MotorCmd()
+
+            # PD position control
+            pos_error = self.target_positions[i] - self.joint_positions[i]
+            vel_error = -self.joint_velocities[i]
+
+            motor_cmd.mode = 0x01  # FOC mode (active)
+            motor_cmd.q = float(self.target_positions[i])
+            motor_cmd.dq = 0.0
+            motor_cmd.tau = float(self.kp[i] * pos_error + self.kd[i] * vel_error)
+            motor_cmd.kp = float(self.kp[i])
+            motor_cmd.kd = float(self.kd[i])
+
+            cmd.motor_cmd[i] = motor_cmd
+
+        self.cmd_pub.publish(cmd)
+
 
 def main(args=None):
     rclpy.init(args=args)
-    # Placeholder
-    rclpy.shutdown()
+    node = H1ControlNode()
+
+    try:
+        rclpy.spin(node)
+    except KeyboardInterrupt:
+        pass
+    finally:
+        node.destroy_node()
+        rclpy.shutdown()
+
 
 if __name__ == '__main__':
     main()
+```
+
+### RL-Based Locomotion Training
+
+Using Unitree's RL Gym for training locomotion policies:
+
+```bash
+# Clone and install Unitree RL Gym
+git clone https://github.com/unitreerobotics/unitree_rl_gym.git
+cd unitree_rl_gym
+pip install -e .
+
+# Install rsl_rl (RSL's RL library)
+git clone https://github.com/leggedrobotics/rsl_rl.git
+cd rsl_rl
+pip install -e .
+
+# Train H1 locomotion policy
+cd unitree_rl_gym
+python legged_gym/scripts/train.py --task=h1 --headless --max_iterations=5000
+
+# Evaluate trained policy
+python legged_gym/scripts/play.py --task=h1 --num_envs=10
 ```
 
 ---
 
 ## Common Failure Modes
 
-[Placeholder: Timing, gains, collision issues]
+### 1. Balance Loss During Walking
+
+**Symptoms**: Robot tips over during swing phase or step transitions.
+
+**Diagnosis**:
+```python
+def diagnose_balance_failure(
+    com_trajectory: np.ndarray,
+    zmp_trajectory: np.ndarray,
+    support_polygon_history: list
+) -> dict:
+    """Analyze balance failure from logged data."""
+    issues = []
+
+    for i, (zmp, polygon) in enumerate(zip(zmp_trajectory, support_polygon_history)):
+        if not is_stable(zmp, polygon):
+            issues.append({
+                'timestep': i,
+                'zmp': zmp,
+                'polygon': polygon,
+                'margin': compute_stability_margin(zmp, polygon)
+            })
+
+    return {'unstable_frames': issues, 'failure_rate': len(issues) / len(zmp_trajectory)}
+```
+
+**Resolution**:
+- Reduce step length and speed
+- Increase double support phase duration
+- Tune CoM tracking gains
+- Check IMU calibration for accurate state estimation
+
+### 2. Actuator Saturation
+
+**Symptoms**: Jerky motion, inability to track commands, overheating warnings.
+
+**Diagnosis**:
+```python
+def check_actuator_limits(
+    torque_commands: np.ndarray,
+    torque_limits: np.ndarray
+) -> dict:
+    """Check for actuator saturation."""
+    saturated = np.abs(torque_commands) >= torque_limits
+    saturation_ratio = saturated.mean(axis=0)
+
+    return {
+        'saturated_joints': np.where(saturation_ratio > 0.1)[0].tolist(),
+        'saturation_ratio': saturation_ratio.tolist(),
+        'max_torques': np.abs(torque_commands).max(axis=0).tolist()
+    }
+```
+
+**Resolution**:
+- Reduce gains (Kp, Kd)
+- Slow down motions
+- Use torque feedforward to reduce feedback effort
+- Check for mechanical binding or friction
+
+### 3. Foot Slip During Push Recovery
+
+**Symptoms**: Feet slide instead of providing stable reaction forces.
+
+**Resolution**:
+- Verify ground contact estimation
+- Reduce horizontal force commands
+- Implement friction cone constraints
+- Use stepping strategy earlier
+
+### 4. Arm-Leg Coordination Failure
+
+**Symptoms**: Manipulation tasks destabilize walking, or walking prevents manipulation.
+
+**Resolution**:
+- Implement proper whole-body control with prioritization
+- Reduce arm accelerations during walking
+- Use arm motions that compensate for leg dynamics
+
+### 5. Ground Contact Detection Errors
+
+**Symptoms**: Premature or late swing phase transitions, foot strikes ground unexpectedly.
+
+**Diagnosis**:
+- Check force sensor calibration
+- Compare estimated vs. actual contact timing
+- Verify terrain height estimation
+
+**Resolution**:
+- Fuse multiple sensors (force, IMU, joint torque)
+- Add margin to swing height
+- Implement adaptive ground height estimation
 
 ---
 
 ## Hardware and Compute Requirements
 
-| Requirement | Minimum | Recommended |
-|-------------|---------|-------------|
-| Operating System | Ubuntu 22.04 LTS | Ubuntu 22.04 LTS |
-| RAM | 16 GB | 32 GB |
-| GPU | Optional | NVIDIA RTX 3060+ |
+| Requirement | Minimum | Recommended | Simulation |
+|-------------|---------|-------------|------------|
+| Operating System | Ubuntu 22.04 LTS | Ubuntu 22.04 LTS | Ubuntu 22.04 LTS |
+| CPU | 8 cores | 16+ cores | 8 cores |
+| RAM | 16 GB | 32 GB | 16 GB |
+| GPU | Optional | RTX 3060+ | RTX 3080+ |
+| ROS 2 | Humble | Humble/Iron | Humble |
+| Real-time kernel | Required (real hardware) | Required | Not needed |
+
+**For Unitree H1 Hardware**:
+- Unitree H1 robot (~$150,000)
+- 100 Mbps Ethernet connection
+- Emergency stop button
+- Safety enclosure for testing
+
+**For Simulation-Only Development**:
+- Isaac Sim or Gazebo with H1 URDF
+- Unitree RL Gym for RL training
+- MuJoCo for fast prototyping
 
 ---
 
 ## Summary
 
-[Placeholder: Chapter summary]
+This chapter covered the fundamental control architectures for humanoid robots:
+
+- **Balance Control**: ZMP criterion, CoM tracking, ankle/hip/step strategies
+- **Gait Generation**: Footstep planning, swing trajectories, state machines
+- **Grasp Planning**: Candidate generation, grasp types, approach trajectories
+- **Force Control**: Impedance control, hybrid force/position control
+- **Unitree H1**: Low-level motor interface, ROS 2 integration, RL training
+
+The key insight is that humanoid control is a **hierarchical optimization problem**—high-level goals decompose into whole-body motion, which decomposes into joint commands, all while maintaining dynamic balance.
+
+---
+
+## Knowledge Check
+
+<Quiz
+  questions={[
+    {
+      question: "What must be true for a bipedal robot to maintain static balance?",
+      options: [
+        "The center of mass must be at the highest point",
+        "The Zero Moment Point must be inside the support polygon",
+        "All joints must be at their zero positions",
+        "The robot must be moving forward"
+      ],
+      correctIndex: 1,
+      explanation: "The Zero Moment Point (ZMP) represents where ground reaction forces effectively act. For stability, the ZMP must remain within the support polygon formed by the feet. If it exits, the robot will tip over."
+    },
+    {
+      question: "Why does impedance control use both stiffness and damping terms?",
+      options: [
+        "Stiffness corrects position errors, damping prevents oscillations",
+        "Stiffness controls velocity, damping controls position",
+        "Both terms are for force control only",
+        "Stiffness is for simulation, damping is for real robots"
+      ],
+      correctIndex: 0,
+      explanation: "In impedance control, stiffness (Kp) creates a restoring force proportional to position error, while damping (Kd) dissipates energy proportional to velocity, preventing oscillations. Together, they create stable, compliant behavior."
+    },
+    {
+      question: "During bipedal walking, what happens in the double support phase?",
+      options: [
+        "One foot is in the air swinging forward",
+        "Both feet are in contact with the ground simultaneously",
+        "The robot is falling forward",
+        "No control is applied"
+      ],
+      correctIndex: 1,
+      explanation: "The double support phase occurs when both feet contact the ground, providing the largest support polygon. This is the most stable phase and is typically used to transfer weight between legs before the next swing phase."
+    },
+    {
+      question: "If a humanoid robot keeps falling forward during walking, which parameter should you adjust first?",
+      options: [
+        "Increase arm swing amplitude",
+        "Reduce step length or increase double support duration",
+        "Increase motor temperature limits",
+        "Add more joints"
+      ],
+      correctIndex: 1,
+      explanation: "Forward falls indicate the CoM is moving too fast relative to foot placement. Reducing step length or increasing double support time gives the robot more time to shift weight properly, improving stability margins."
+    }
+  ]}
+/>
 
 ---
 
 ## Next Chapter Preview
 
-In the next chapter, **Conversational Robotics**, you will learn about voice interaction.
+In the next chapter, **Conversational Robotics**, you will learn how to enable natural language interaction with robots through speech recognition, dialogue management, and text-to-speech—connecting the physical capabilities covered in this chapter with natural human communication.

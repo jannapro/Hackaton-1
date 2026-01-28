@@ -269,19 +269,19 @@
 
 ### Implementation for User Story 6
 
-- [ ] T116 [US6] Query Context7 MCP for locomotion/manipulation curriculum alignment
-- [ ] T117 [US6] Verify Unitree H1 URDF availability for Gazebo/Isaac Sim
-- [ ] T118 [US6] Write learning objectives in docs/06-humanoid-locomotion-manipulation/index.mdx
+- [x] T116 [US6] Query Context7 MCP for locomotion/manipulation curriculum alignment
+- [x] T117 [US6] Verify Unitree H1 URDF availability for Gazebo/Isaac Sim
+- [x] T118 [US6] Write learning objectives in docs/06-humanoid-locomotion-manipulation/index.mdx
 - [ ] T119 [US6] Create architecture diagram at docs/06-humanoid-locomotion-manipulation/assets/locomotion-architecture.png
-- [ ] T120 [US6] Write Balance Control section in docs/06-humanoid-locomotion-manipulation/index.mdx
-- [ ] T121 [US6] Write Gait Generation section in docs/06-humanoid-locomotion-manipulation/index.mdx
-- [ ] T122 [US6] Write Grasp Planning section in docs/06-humanoid-locomotion-manipulation/index.mdx
-- [ ] T123 [US6] Write Force Control section in docs/06-humanoid-locomotion-manipulation/index.mdx
-- [ ] T124 [US6] Add Unitree H1 simulation code examples in docs/06-humanoid-locomotion-manipulation/index.mdx
-- [ ] T125 [US6] Add quiz on locomotion/manipulation concepts in docs/06-humanoid-locomotion-manipulation/index.mdx
-- [ ] T126 [US6] Write Common Failure Modes section (timing, gains, collision) in docs/06-humanoid-locomotion-manipulation/index.mdx
-- [ ] T127 [US6] Document hardware requirements in docs/06-humanoid-locomotion-manipulation/index.mdx
-- [ ] T128 [US6] Commit Chapter 6 via GitHub MCP
+- [x] T120 [US6] Write Balance Control section in docs/06-humanoid-locomotion-manipulation/index.mdx
+- [x] T121 [US6] Write Gait Generation section in docs/06-humanoid-locomotion-manipulation/index.mdx
+- [x] T122 [US6] Write Grasp Planning section in docs/06-humanoid-locomotion-manipulation/index.mdx
+- [x] T123 [US6] Write Force Control section in docs/06-humanoid-locomotion-manipulation/index.mdx
+- [x] T124 [US6] Add Unitree H1 simulation code examples in docs/06-humanoid-locomotion-manipulation/index.mdx
+- [x] T125 [US6] Add quiz on locomotion/manipulation concepts in docs/06-humanoid-locomotion-manipulation/index.mdx
+- [x] T126 [US6] Write Common Failure Modes section (timing, gains, collision) in docs/06-humanoid-locomotion-manipulation/index.mdx
+- [x] T127 [US6] Document hardware requirements in docs/06-humanoid-locomotion-manipulation/index.mdx
+- [x] T128 [US6] Commit Chapter 6 via GitHub MCP
 
 **Checkpoint**: Chapter 6 complete and independently testable.
 
