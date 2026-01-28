@@ -195,17 +195,17 @@
 
 ### Implementation for User Story 3
 
-- [ ] T081 [US3] Query Context7 MCP for Gazebo/Unity curriculum alignment
-- [ ] T082 [US3] Write learning objectives in docs/03-digital-twins-gazebo-unity/index.mdx
+- [x] T081 [US3] Query Context7 MCP for Gazebo/Unity curriculum alignment
+- [x] T082 [US3] Write learning objectives in docs/03-digital-twins-gazebo-unity/index.mdx
 - [ ] T083 [US3] Create architecture diagram at docs/03-digital-twins-gazebo-unity/assets/digital-twin-architecture.png
-- [ ] T084 [US3] Write Gazebo Harmonic Setup section in docs/03-digital-twins-gazebo-unity/index.mdx
-- [ ] T085 [US3] Write SDF Model Creation section in docs/03-digital-twins-gazebo-unity/index.mdx
-- [ ] T086 [US3] Write ros_gz Bridge section in docs/03-digital-twins-gazebo-unity/index.mdx
-- [ ] T087 [US3] Add code examples for robot spawning in docs/03-digital-twins-gazebo-unity/index.mdx
-- [ ] T088 [US3] Add quiz on digital twin concepts in docs/03-digital-twins-gazebo-unity/index.mdx
-- [ ] T089 [US3] Write Common Failure Modes section (physics, timing, sensors) in docs/03-digital-twins-gazebo-unity/index.mdx
-- [ ] T090 [US3] Document hardware requirements in docs/03-digital-twins-gazebo-unity/index.mdx
-- [ ] T091 [US3] Commit Chapter 3 via GitHub MCP
+- [x] T084 [US3] Write Gazebo Harmonic Setup section in docs/03-digital-twins-gazebo-unity/index.mdx
+- [x] T085 [US3] Write SDF Model Creation section in docs/03-digital-twins-gazebo-unity/index.mdx
+- [x] T086 [US3] Write ros_gz Bridge section in docs/03-digital-twins-gazebo-unity/index.mdx
+- [x] T087 [US3] Add code examples for robot spawning in docs/03-digital-twins-gazebo-unity/index.mdx
+- [x] T088 [US3] Add quiz on digital twin concepts in docs/03-digital-twins-gazebo-unity/index.mdx
+- [x] T089 [US3] Write Common Failure Modes section (physics, timing, sensors) in docs/03-digital-twins-gazebo-unity/index.mdx
+- [x] T090 [US3] Document hardware requirements in docs/03-digital-twins-gazebo-unity/index.mdx
+- [x] T091 [US3] Commit Chapter 3 via GitHub MCP
 
 **Checkpoint**: Chapter 3 complete and independently testable.
 
