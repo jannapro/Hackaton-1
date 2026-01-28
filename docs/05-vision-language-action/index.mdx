@@ -10,81 +10,942 @@ keywords:
   - action decoder
   - RT-2
   - OpenVLA
+  - CLIP
+  - DINOv2
 description: "VLA pipelines connecting computer vision, language models, and robotic action for intelligent manipulation."
 ---
 
+import Quiz from '@site/src/components/Quiz';
+import CodePlayground from '@site/src/components/CodePlayground';
+import CollapsibleSection from '@site/src/components/CollapsibleSection';
+
 # Vision-Language-Action Systems
+
+**Estimated Time**: 90-120 minutes
+
+Vision-Language-Action (VLA) models represent the convergence of computer vision, natural language processing, and robotics control. These systems enable robots to interpret visual scenes, understand natural language instructions, and execute appropriate physical actions—the foundation for robots that can follow commands like "pick up the red cup and place it on the shelf."
+
+This chapter explores the architecture, training, and deployment of VLA systems, from vision encoders through action decoders.
+
+---
 
 ## Learning Objectives
 
 By the end of this chapter, you will be able to:
 
-1. **[LO-01]**: [Placeholder - Explain VLA architecture]
-2. **[LO-02]**: [Placeholder - Describe vision encoders (CLIP, DINOv2)]
-3. **[LO-03]**: [Placeholder - Understand action decoders]
+1. **[LO-01]** (Understand): Explain the VLA pipeline architecture and identify the role of each component (vision encoder, language model, action decoder).
+
+2. **[LO-02]** (Apply): Implement vision feature extraction using pretrained CLIP and DINOv2 models for robotic perception.
+
+3. **[LO-03]** (Analyze): Analyze how language instructions are grounded in visual observations to produce executable robot actions.
+
+4. **[LO-04]** (Apply): Deploy a VLA model for inference on a robotic system with appropriate preprocessing and action decoding.
+
+5. **[LO-05]** (Evaluate): Evaluate VLA system performance and diagnose common failure modes including hallucination, latency, and action discretization errors.
 
 ---
 
 ## System Architecture
 
-[Placeholder: VLA pipeline architecture]
-
 <!-- Architecture diagram placeholder - to be added during chapter authoring -->
+
+The VLA pipeline transforms visual observations and language instructions into robot actions:
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                        VLA Pipeline                                     │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                          │
+│  ┌──────────────┐     ┌──────────────────┐     ┌──────────────────────┐ │
+│  │   Camera     │────▶│  Vision Encoder  │────▶│                      │ │
+│  │   Image      │     │  (CLIP/DINOv2)   │     │                      │ │
+│  └──────────────┘     └──────────────────┘     │                      │ │
+│                              │                  │    Multimodal        │ │
+│                              ▼                  │    Language Model    │ │
+│                       ┌──────────────┐         │    (LLM Backbone)    │ │
+│                       │   Visual     │────────▶│                      │ │
+│                       │   Tokens     │         │                      │ │
+│                       └──────────────┘         │                      │ │
+│                                                 │                      │ │
+│  ┌──────────────┐     ┌──────────────────┐     │                      │ │
+│  │  Language    │────▶│    Text          │────▶│                      │ │
+│  │  Instruction │     │    Tokenizer     │     │                      │ │
+│  └──────────────┘     └──────────────────┘     └──────────┬───────────┘ │
+│                                                            │             │
+│                                                            ▼             │
+│                              ┌─────────────────────────────────────────┐│
+│                              │         Action Decoder                  ││
+│                              │  (Continuous or Discretized Actions)    ││
+│                              └────────────────────┬────────────────────┘│
+│                                                   │                      │
+│                                                   ▼                      │
+│                              ┌─────────────────────────────────────────┐│
+│                              │   Robot Actions: [x, y, z, θ, grip]    ││
+│                              └─────────────────────────────────────────┘│
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+**Key Insight**: VLA models treat robot actions as a language generation problem—the model "speaks" in actions rather than words.
 
 ---
 
 ## Vision Encoder
 
-[Placeholder: Vision encoder content (CLIP, DINOv2) - 500-800 tokens]
+The vision encoder transforms raw images into dense feature representations that capture semantic and spatial information. Two architectures dominate modern VLA systems.
+
+### CLIP: Contrastive Language-Image Pre-training
+
+CLIP learns joint embeddings of images and text through contrastive learning on 400M image-text pairs. This creates a representation space where semantically similar images and text descriptions are close together.
+
+```python
+from transformers import CLIPProcessor, CLIPModel
+from PIL import Image
+import torch
+
+# Load pretrained CLIP
+model = CLIPModel.from_pretrained("openai/clip-vit-large-patch14")
+processor = CLIPProcessor.from_pretrained("openai/clip-vit-large-patch14")
+
+def extract_visual_features(image: Image.Image) -> torch.Tensor:
+    """
+    Extract CLIP visual features for VLA pipeline.
+
+    Args:
+        image: PIL Image from robot camera
+
+    Returns:
+        Visual embedding tensor of shape (1, 768)
+    """
+    inputs = processor(images=image, return_tensors="pt")
+
+    with torch.no_grad():
+        image_features = model.get_image_features(**inputs)
+        # L2 normalize for cosine similarity
+        image_features = image_features / image_features.norm(p=2, dim=-1, keepdim=True)
+
+    return image_features
+
+# Example: Extract features from robot camera
+camera_image = Image.open("robot_camera.jpg")
+visual_embedding = extract_visual_features(camera_image)
+print(f"Visual embedding shape: {visual_embedding.shape}")  # [1, 768]
+```
+
+**CLIP Advantages for Robotics**:
+- Zero-shot object recognition via text prompts
+- Language-aligned representations (text and images share embedding space)
+- Strong transfer to novel objects
+
+### DINOv2: Self-Supervised Vision Transformer
+
+DINOv2 learns dense visual features through self-supervised learning, excelling at spatial understanding and fine-grained details that CLIP may miss.
+
+```python
+from transformers import AutoImageProcessor, AutoModel
+from PIL import Image
+import torch
+
+# Load DINOv2
+processor = AutoImageProcessor.from_pretrained("facebook/dinov2-base")
+model = AutoModel.from_pretrained("facebook/dinov2-base")
+
+def extract_dinov2_features(image: Image.Image) -> tuple[torch.Tensor, torch.Tensor]:
+    """
+    Extract DINOv2 features: global CLS token and local patch features.
+
+    Args:
+        image: PIL Image from robot camera
+
+    Returns:
+        Tuple of (cls_token, patch_features)
+        - cls_token: (1, 768) global image representation
+        - patch_features: (1, H, W, 768) spatial feature map
+    """
+    inputs = processor(images=image, return_tensors="pt")
+
+    with torch.no_grad():
+        outputs = model(**inputs)
+        last_hidden_states = outputs.last_hidden_state
+
+    # Separate CLS token and patch features
+    cls_token = last_hidden_states[:, 0, :]  # (1, 768)
+
+    # Reshape patches to spatial grid
+    patch_size = model.config.patch_size
+    _, _, img_h, img_w = inputs.pixel_values.shape
+    h_patches = img_h // patch_size
+    w_patches = img_w // patch_size
+
+    patch_features = last_hidden_states[:, 1:, :]
+    patch_features = patch_features.unflatten(1, (h_patches, w_patches))
+
+    return cls_token, patch_features
+
+# Example usage
+image = Image.open("workspace.jpg")
+cls_token, spatial_features = extract_dinov2_features(image)
+print(f"CLS token: {cls_token.shape}")         # [1, 768]
+print(f"Spatial features: {spatial_features.shape}")  # [1, 16, 16, 768]
+```
+
+**DINOv2 Advantages for Robotics**:
+- Dense spatial features for precise localization
+- Self-supervised (no labels needed for pretraining)
+- Strong depth and surface normal estimation
+
+### Choosing Between CLIP and DINOv2
+
+| Use Case | Recommended | Reason |
+|----------|-------------|--------|
+| Language-conditioned grasping | CLIP | Text-aligned embeddings |
+| 6-DoF pose estimation | DINOv2 | Dense spatial features |
+| Novel object manipulation | CLIP | Zero-shot transfer |
+| Fine manipulation | DINOv2 | Higher spatial resolution |
+| Multi-task policy | Both | Complementary features |
 
 ---
 
 ## Language Model Integration
 
-[Placeholder: Language model content - 500-800 tokens]
+The language model serves as the "reasoning engine" of the VLA, fusing visual features with language instructions to produce action tokens.
+
+### Vision-Language Fusion
+
+Modern VLA architectures inject visual tokens directly into the language model's context:
+
+```python
+import torch
+import torch.nn as nn
+from transformers import AutoModelForCausalLM, AutoTokenizer
+
+class VisionLanguageProjector(nn.Module):
+    """Projects vision features into language model embedding space."""
+
+    def __init__(self, vision_dim: int = 768, llm_dim: int = 4096):
+        super().__init__()
+        self.projection = nn.Sequential(
+            nn.Linear(vision_dim, llm_dim),
+            nn.GELU(),
+            nn.Linear(llm_dim, llm_dim)
+        )
+
+    def forward(self, vision_features: torch.Tensor) -> torch.Tensor:
+        """
+        Args:
+            vision_features: (batch, num_patches, vision_dim)
+
+        Returns:
+            Projected features: (batch, num_patches, llm_dim)
+        """
+        return self.projection(vision_features)
+
+
+class VLAModel(nn.Module):
+    """Vision-Language-Action model combining vision encoder, LLM, and action decoder."""
+
+    def __init__(self, vision_encoder, llm_name: str = "meta-llama/Llama-2-7b-hf"):
+        super().__init__()
+        self.vision_encoder = vision_encoder
+        self.llm = AutoModelForCausalLM.from_pretrained(llm_name)
+        self.tokenizer = AutoTokenizer.from_pretrained(llm_name)
+
+        # Project vision to LLM dimension
+        vision_dim = 768  # CLIP/DINOv2 dimension
+        llm_dim = self.llm.config.hidden_size
+        self.vision_projector = VisionLanguageProjector(vision_dim, llm_dim)
+
+        # Action prediction head
+        self.action_head = nn.Linear(llm_dim, 7)  # 7-DoF action
+
+    def forward(self, image: torch.Tensor, instruction: str) -> torch.Tensor:
+        """
+        Process image and instruction to produce robot action.
+
+        Args:
+            image: (batch, 3, 224, 224) input image
+            instruction: Natural language command
+
+        Returns:
+            action: (batch, 7) robot action [x, y, z, rx, ry, rz, gripper]
+        """
+        # Extract vision features
+        with torch.no_grad():
+            vision_features = self.vision_encoder(image)  # (batch, num_patches, 768)
+
+        # Project to LLM space
+        vision_tokens = self.vision_projector(vision_features)
+
+        # Tokenize instruction
+        text_tokens = self.tokenizer(
+            instruction,
+            return_tensors="pt",
+            padding=True
+        )
+        text_embeds = self.llm.get_input_embeddings()(text_tokens.input_ids)
+
+        # Concatenate vision and text tokens
+        # [Vision Tokens] [Text Tokens] [Action Token]
+        combined = torch.cat([vision_tokens, text_embeds], dim=1)
+
+        # Forward through LLM
+        outputs = self.llm(inputs_embeds=combined, output_hidden_states=True)
+        last_hidden = outputs.hidden_states[-1][:, -1, :]  # Last token
+
+        # Predict action
+        action = self.action_head(last_hidden)
+        return action
+```
+
+### Instruction Formats
+
+VLA models are sensitive to instruction formatting. Common patterns:
+
+```python
+# Direct command
+instruction = "Pick up the red cup."
+
+# Goal specification
+instruction = "The red cup should be on the shelf."
+
+# Step-by-step
+instruction = "First, move to the cup. Then, grasp it firmly. Finally, place it on the shelf."
+
+# With spatial reference
+instruction = "Pick up the cup to your left and place it behind the box."
+```
+
+<CollapsibleSection title="Prompt Engineering for VLA Models">
+
+Effective VLA prompts should:
+
+1. **Be specific**: "Pick up the red ceramic cup" vs. "Get the cup"
+2. **Include spatial context**: "the cup on the left side of the table"
+3. **Specify end conditions**: "until the gripper fully closes"
+4. **Avoid ambiguity**: Clarify "it" with explicit object references
+
+**Anti-patterns to avoid**:
+- Chained commands without clear sequencing
+- References to objects not in view
+- Instructions requiring reasoning beyond visual context
+
+</CollapsibleSection>
 
 ---
 
 ## Action Decoder
 
-[Placeholder: Action decoder content - 500-800 tokens]
+The action decoder transforms language model outputs into executable robot commands. Two primary approaches exist.
+
+### Discretized Action Tokens
+
+RT-2 and similar models treat actions as special vocabulary tokens:
+
+```python
+import torch
+import torch.nn as nn
+
+class DiscretizedActionDecoder:
+    """Decodes discrete action tokens into continuous robot commands."""
+
+    def __init__(
+        self,
+        num_bins: int = 256,
+        action_dim: int = 7,
+        action_ranges: list[tuple[float, float]] = None
+    ):
+        self.num_bins = num_bins
+        self.action_dim = action_dim
+
+        # Default ranges: [min, max] for each action dimension
+        self.action_ranges = action_ranges or [
+            (-0.5, 0.5),   # x translation
+            (-0.5, 0.5),   # y translation
+            (-0.5, 0.5),   # z translation
+            (-3.14, 3.14), # roll
+            (-3.14, 3.14), # pitch
+            (-3.14, 3.14), # yaw
+            (0.0, 1.0),    # gripper (0=open, 1=closed)
+        ]
+
+    def tokens_to_action(self, tokens: list[int]) -> torch.Tensor:
+        """
+        Convert discrete tokens to continuous action.
+
+        Args:
+            tokens: List of action token indices (one per dimension)
+
+        Returns:
+            Continuous action tensor of shape (action_dim,)
+        """
+        action = torch.zeros(self.action_dim)
+
+        for i, token in enumerate(tokens):
+            min_val, max_val = self.action_ranges[i]
+            # Linear interpolation from bin to continuous value
+            action[i] = min_val + (token / (self.num_bins - 1)) * (max_val - min_val)
+
+        return action
+
+    def action_to_tokens(self, action: torch.Tensor) -> list[int]:
+        """
+        Convert continuous action to discrete tokens.
+
+        Args:
+            action: Continuous action tensor
+
+        Returns:
+            List of token indices
+        """
+        tokens = []
+
+        for i in range(self.action_dim):
+            min_val, max_val = self.action_ranges[i]
+            # Normalize to [0, 1] then scale to bins
+            normalized = (action[i] - min_val) / (max_val - min_val)
+            bin_idx = int(torch.clamp(normalized * (self.num_bins - 1), 0, self.num_bins - 1))
+            tokens.append(bin_idx)
+
+        return tokens
+
+
+# Usage example
+decoder = DiscretizedActionDecoder(num_bins=256)
+
+# Model outputs token indices
+predicted_tokens = [128, 128, 100, 128, 128, 128, 200]
+action = decoder.tokens_to_action(predicted_tokens)
+print(f"Continuous action: {action}")
+# Output: [0.0, 0.0, -0.11, 0.0, 0.0, 0.0, 0.78]
+```
+
+### Continuous Action Regression
+
+Alternative approach with direct regression head:
+
+```python
+class ContinuousActionHead(nn.Module):
+    """Predicts continuous actions via regression."""
+
+    def __init__(self, hidden_dim: int = 4096, action_dim: int = 7):
+        super().__init__()
+        self.mlp = nn.Sequential(
+            nn.Linear(hidden_dim, 1024),
+            nn.ReLU(),
+            nn.Linear(1024, 256),
+            nn.ReLU(),
+            nn.Linear(256, action_dim)
+        )
+
+        # Action normalization bounds
+        self.register_buffer("action_mean", torch.zeros(action_dim))
+        self.register_buffer("action_std", torch.ones(action_dim))
+
+    def forward(self, hidden_state: torch.Tensor) -> torch.Tensor:
+        """
+        Predict normalized action from LLM hidden state.
+
+        Args:
+            hidden_state: (batch, hidden_dim) from language model
+
+        Returns:
+            action: (batch, action_dim) normalized action
+        """
+        normalized_action = self.mlp(hidden_state)
+        # Denormalize using learned statistics
+        action = normalized_action * self.action_std + self.action_mean
+        return action
+```
+
+### Comparison
+
+| Aspect | Discretized | Continuous |
+|--------|------------|------------|
+| Precision | Limited by bin count | Full floating point |
+| Training | Standard cross-entropy | MSE/L1 regression |
+| Distribution | Implicit multimodal | Assumes unimodal |
+| Compatibility | Uses LLM vocabulary | Requires custom head |
 
 ---
 
 ## RT-2/OpenVLA Reference Architecture
 
-[Placeholder: Reference architecture content - 500-800 tokens]
+RT-2 (Robotics Transformer 2) and OpenVLA represent state-of-the-art VLA architectures.
+
+### RT-2 Architecture
+
+RT-2 builds on PaLI-X, a vision-language model:
+
+1. **Vision Backbone**: ViT-22B vision encoder
+2. **Language Model**: PaLM-E (562B) or PaLI-X
+3. **Action Representation**: 256 bins per dimension, 8 tokens per action
+4. **Training Data**: RT-1 demonstrations + web-scale vision-language data
+
+**Key Innovation**: Co-trains on robot data and internet-scale vision-language data, enabling semantic understanding and generalization.
+
+### OpenVLA: Open-Source Alternative
+
+OpenVLA provides an accessible implementation:
+
+```python
+# OpenVLA inference example (conceptual)
+from openvla import OpenVLA
+from PIL import Image
+
+# Load model
+model = OpenVLA.from_pretrained("openvla/openvla-7b")
+
+# Prepare observation
+image = Image.open("robot_camera.jpg")
+instruction = "Pick up the blue block and stack it on the red block."
+
+# Get action prediction
+action = model.predict_action(
+    image=image,
+    instruction=instruction,
+    unnorm_key="bridge_orig"  # Dataset-specific unnormalization
+)
+
+# action is a 7-DoF vector: [x, y, z, roll, pitch, yaw, gripper]
+print(f"Predicted action: {action}")
+```
+
+### Action Chunking
+
+Modern VLA models predict action sequences rather than single actions:
+
+```python
+class ActionChunkingVLA(nn.Module):
+    """VLA with action chunking for smoother execution."""
+
+    def __init__(self, base_vla, chunk_size: int = 10):
+        super().__init__()
+        self.base_vla = base_vla
+        self.chunk_size = chunk_size
+        self.action_buffer = []
+
+    def get_action(self, image, instruction) -> torch.Tensor:
+        """
+        Returns single action, predicting new chunk when buffer empty.
+        """
+        if len(self.action_buffer) == 0:
+            # Predict full chunk
+            chunk = self.base_vla.predict_action_chunk(
+                image, instruction, chunk_size=self.chunk_size
+            )
+            self.action_buffer = list(chunk)
+
+        return self.action_buffer.pop(0)
+
+    def reset(self):
+        """Clear buffer on episode reset."""
+        self.action_buffer = []
+```
 
 ---
 
 ## Practical Implementation
 
-[Placeholder: Code examples]
+### Complete VLA Inference Pipeline
+
+```python
+import torch
+import numpy as np
+from PIL import Image
+from transformers import AutoProcessor, AutoModel
+from typing import Optional
+import rclpy
+from rclpy.node import Node
+from geometry_msgs.msg import Twist
+from sensor_msgs.msg import Image as RosImage
+from cv_bridge import CvBridge
+
+
+class VLAControlNode(Node):
+    """ROS 2 node for VLA-based robot control."""
+
+    def __init__(self):
+        super().__init__("vla_control")
+
+        # Load VLA model
+        self.get_logger().info("Loading VLA model...")
+        self.processor = AutoProcessor.from_pretrained("openvla/openvla-7b")
+        self.model = AutoModel.from_pretrained("openvla/openvla-7b")
+        self.model.eval()
+
+        # ROS interfaces
+        self.bridge = CvBridge()
+        self.image_sub = self.create_subscription(
+            RosImage, "/camera/color/image_raw", self.image_callback, 10
+        )
+        self.action_pub = self.create_publisher(Twist, "/cmd_vel", 10)
+
+        # State
+        self.current_image: Optional[Image.Image] = None
+        self.current_instruction: str = ""
+
+        # Control loop at 10 Hz
+        self.timer = self.create_timer(0.1, self.control_loop)
+        self.get_logger().info("VLA control node initialized")
+
+    def image_callback(self, msg: RosImage):
+        """Convert ROS image to PIL."""
+        cv_image = self.bridge.imgmsg_to_cv2(msg, "rgb8")
+        self.current_image = Image.fromarray(cv_image)
+
+    def set_instruction(self, instruction: str):
+        """Update language instruction."""
+        self.current_instruction = instruction
+        self.get_logger().info(f"Instruction: {instruction}")
+
+    def control_loop(self):
+        """Main VLA control loop."""
+        if self.current_image is None or not self.current_instruction:
+            return
+
+        # Preprocess
+        inputs = self.processor(
+            images=self.current_image,
+            text=self.current_instruction,
+            return_tensors="pt"
+        )
+
+        # Inference
+        with torch.no_grad():
+            outputs = self.model(**inputs)
+            action = outputs.action  # (7,) tensor
+
+        # Convert to Twist message (for mobile base)
+        twist = Twist()
+        twist.linear.x = float(action[0])  # Forward velocity
+        twist.linear.y = float(action[1])  # Lateral velocity
+        twist.angular.z = float(action[5]) # Yaw rate
+
+        self.action_pub.publish(twist)
+
+
+def main():
+    rclpy.init()
+    node = VLAControlNode()
+
+    # Example instruction
+    node.set_instruction("Navigate to the red door")
+
+    try:
+        rclpy.spin(node)
+    except KeyboardInterrupt:
+        pass
+    finally:
+        node.destroy_node()
+        rclpy.shutdown()
+
+
+if __name__ == "__main__":
+    main()
+```
+
+### Batched Inference for Efficiency
+
+```python
+import torch
+from dataclasses import dataclass
+from typing import List
+
+@dataclass
+class VLARequest:
+    image: torch.Tensor
+    instruction: str
+    callback: callable
+
+
+class BatchedVLAInference:
+    """Batch multiple VLA requests for efficient GPU utilization."""
+
+    def __init__(self, model, processor, batch_size: int = 8, max_wait_ms: int = 50):
+        self.model = model
+        self.processor = processor
+        self.batch_size = batch_size
+        self.max_wait_ms = max_wait_ms
+        self.request_queue: List[VLARequest] = []
+
+    def submit(self, request: VLARequest):
+        """Add request to batch queue."""
+        self.request_queue.append(request)
+
+        if len(self.request_queue) >= self.batch_size:
+            self._process_batch()
+
+    def _process_batch(self):
+        """Process accumulated requests as a batch."""
+        if not self.request_queue:
+            return
+
+        # Collate inputs
+        images = [r.image for r in self.request_queue]
+        instructions = [r.instruction for r in self.request_queue]
+
+        inputs = self.processor(
+            images=images,
+            text=instructions,
+            return_tensors="pt",
+            padding=True
+        )
+
+        # Batched inference
+        with torch.no_grad():
+            outputs = self.model(**inputs)
+            actions = outputs.action  # (batch, 7)
+
+        # Distribute results
+        for i, request in enumerate(self.request_queue):
+            request.callback(actions[i])
+
+        self.request_queue.clear()
+```
 
 ---
 
 ## Common Failure Modes
 
-[Placeholder: Memory, latency, preprocessing issues]
+### 1. Instruction-Action Misalignment (Hallucination)
+
+**Symptoms**: Model performs unrelated actions, ignores parts of instruction.
+
+**Diagnosis**:
+```python
+def check_action_alignment(instruction: str, predicted_action: torch.Tensor) -> dict:
+    """Heuristic check for instruction-action alignment."""
+    issues = []
+
+    # Check for movement when instruction says "stop" or "wait"
+    if any(word in instruction.lower() for word in ["stop", "wait", "don't move"]):
+        if torch.abs(predicted_action[:6]).sum() > 0.1:
+            issues.append("Movement predicted despite stop instruction")
+
+    # Check gripper action alignment
+    if "pick" in instruction.lower() or "grasp" in instruction.lower():
+        if predicted_action[6] < 0.5:  # Gripper not closing
+            issues.append("Gripper not closing for pick instruction")
+
+    return {"aligned": len(issues) == 0, "issues": issues}
+```
+
+**Resolution**:
+- Fine-tune on domain-specific data
+- Use instruction templates matching training distribution
+- Add explicit action verification layer
+
+### 2. Inference Latency Bottleneck
+
+**Symptoms**: Control loop runs slower than required frequency, jerky motion.
+
+**Diagnosis**:
+```python
+import time
+
+def profile_inference(model, processor, image, instruction, n_runs=100):
+    """Profile VLA inference latency."""
+    inputs = processor(images=image, text=instruction, return_tensors="pt")
+
+    # Warmup
+    for _ in range(10):
+        with torch.no_grad():
+            model(**inputs)
+
+    # Profile
+    torch.cuda.synchronize()
+    start = time.perf_counter()
+
+    for _ in range(n_runs):
+        with torch.no_grad():
+            model(**inputs)
+
+    torch.cuda.synchronize()
+    elapsed = time.perf_counter() - start
+
+    avg_ms = (elapsed / n_runs) * 1000
+    max_freq = 1000 / avg_ms
+
+    print(f"Average latency: {avg_ms:.2f} ms")
+    print(f"Maximum control frequency: {max_freq:.1f} Hz")
+```
+
+**Resolution**:
+- Use smaller models (7B vs. 70B parameters)
+- Enable TensorRT or ONNX optimization
+- Implement action chunking (predict K steps, execute over K timesteps)
+- Use asynchronous inference with action buffer
+
+### 3. Distribution Shift on Novel Objects
+
+**Symptoms**: Poor performance on objects not in training data.
+
+**Diagnosis**:
+- Compare visual embeddings to training distribution
+- Check if object appears in CLIP's training data
+
+**Resolution**:
+- Use DINOv2 for better OOD generalization
+- Implement few-shot adaptation with in-context examples
+- Fine-tune on domain-specific objects
+
+### 4. Action Discretization Artifacts
+
+**Symptoms**: Jerky motion, overshooting, inability to reach precise targets.
+
+**Diagnosis**:
+```python
+def analyze_discretization_error(target: float, num_bins: int, min_val: float, max_val: float):
+    """Calculate discretization error for given target."""
+    bin_width = (max_val - min_val) / (num_bins - 1)
+    max_error = bin_width / 2
+
+    # Actual quantized value
+    normalized = (target - min_val) / (max_val - min_val)
+    bin_idx = int(normalized * (num_bins - 1))
+    quantized = min_val + (bin_idx / (num_bins - 1)) * (max_val - min_val)
+
+    error = abs(target - quantized)
+
+    return {
+        "bin_width": bin_width,
+        "max_error": max_error,
+        "actual_error": error,
+        "quantized_value": quantized
+    }
+
+# Example: 256 bins for position in [-0.5, 0.5]
+result = analyze_discretization_error(0.123, 256, -0.5, 0.5)
+# bin_width: 0.0039, max_error: 0.002, actual_error: 0.0014
+```
+
+**Resolution**:
+- Increase number of bins (256 → 1024)
+- Use continuous action head for fine manipulation
+- Implement residual action refinement
+
+### 5. Temporal Inconsistency
+
+**Symptoms**: Action predictions oscillate between timesteps, lack smooth trajectories.
+
+**Diagnosis**:
+```python
+def check_temporal_consistency(action_history: list[torch.Tensor], threshold: float = 0.1):
+    """Check for temporal consistency in action predictions."""
+    if len(action_history) < 2:
+        return {"consistent": True}
+
+    deltas = []
+    for i in range(1, len(action_history)):
+        delta = torch.abs(action_history[i] - action_history[i-1]).mean()
+        deltas.append(delta.item())
+
+    avg_delta = sum(deltas) / len(deltas)
+    max_delta = max(deltas)
+
+    return {
+        "consistent": max_delta < threshold,
+        "avg_delta": avg_delta,
+        "max_delta": max_delta
+    }
+```
+
+**Resolution**:
+- Use action chunking with temporal aggregation
+- Apply exponential smoothing to action outputs
+- Train with trajectory-level loss functions
 
 ---
 
 ## Hardware and Compute Requirements
 
-| Requirement | Minimum | Recommended |
-|-------------|---------|-------------|
-| Operating System | Ubuntu 22.04 LTS | Ubuntu 22.04 LTS |
-| RAM | 16 GB | 32 GB |
-| GPU | NVIDIA RTX 2070 (8GB VRAM) | NVIDIA RTX 3090+ (24GB VRAM) |
+| Requirement | Minimum | Recommended | Production |
+|-------------|---------|-------------|------------|
+| Operating System | Ubuntu 22.04 LTS | Ubuntu 22.04 LTS | Ubuntu 22.04 LTS |
+| RAM | 16 GB | 32 GB | 64 GB |
+| GPU VRAM | 8 GB (7B model, FP16) | 24 GB (7B full precision) | 48 GB (larger models) |
+| GPU | RTX 2080 | RTX 4090 | A100 or H100 |
+| Storage | 50 GB SSD | 100 GB NVMe | 500 GB NVMe |
+
+**Latency Considerations**:
+- 7B model on RTX 4090: ~50-100ms inference
+- Target 10 Hz control: Need less than 100ms total loop time
+- Consider action chunking for slower hardware
+
+**Edge Deployment Options**:
+- NVIDIA Jetson Orin: Supports quantized 7B models
+- Model distillation: Train smaller student models
+- Cloud inference: Offload to GPU server with fast network
 
 ---
 
 ## Summary
 
-[Placeholder: Chapter summary]
+This chapter covered Vision-Language-Action systems:
+
+- **VLA Architecture**: Vision encoder → Language model → Action decoder pipeline
+- **Vision Encoders**: CLIP for language alignment, DINOv2 for spatial features
+- **Language Integration**: Projecting visual tokens into LLM embedding space
+- **Action Decoding**: Discretized tokens vs. continuous regression
+- **RT-2/OpenVLA**: State-of-the-art reference architectures
+- **Failure Modes**: Hallucination, latency, discretization, temporal inconsistency
+
+The key insight is that VLA models unify robotics control with language modeling—robots can now understand instructions and act on them through the same architectural patterns that power chatbots.
+
+---
+
+## Knowledge Check
+
+<Quiz
+  questions={[
+    {
+      question: "What is the primary advantage of using CLIP as a vision encoder in VLA systems?",
+      options: [
+        "Fastest inference speed",
+        "Highest spatial resolution",
+        "Language-aligned visual representations",
+        "Smallest model size"
+      ],
+      correctIndex: 2,
+      explanation: "CLIP's contrastive training on image-text pairs creates embeddings where visual and language representations share the same space, enabling natural language conditioning of visual understanding."
+    },
+    {
+      question: "Why do RT-2 and similar models use discretized action tokens instead of continuous regression?",
+      options: [
+        "Discretized actions are more precise",
+        "It enables using standard language model training objectives",
+        "Continuous regression is too slow",
+        "Robots only accept discrete commands"
+      ],
+      correctIndex: 1,
+      explanation: "By treating actions as tokens in the vocabulary, VLA models can use standard cross-entropy loss and next-token prediction, leveraging the full language modeling training infrastructure."
+    },
+    {
+      question: "What is action chunking and why is it useful?",
+      options: [
+        "Compressing action data for storage",
+        "Predicting multiple future actions at once to reduce inference frequency",
+        "Dividing actions into smaller sub-actions",
+        "Grouping similar actions for batch processing"
+      ],
+      correctIndex: 1,
+      explanation: "Action chunking predicts a sequence of K future actions in one inference pass. This reduces the required inference frequency (e.g., from 10 Hz to 1 Hz) while maintaining smooth control through interpolation."
+    },
+    {
+      question: "If a VLA model performs correct actions on training objects but fails on novel objects, what is the most likely cause?",
+      options: [
+        "Insufficient training iterations",
+        "Distribution shift - novel objects differ from training distribution",
+        "Action discretization too coarse",
+        "Language instruction ambiguity"
+      ],
+      correctIndex: 1,
+      explanation: "This is a classic distribution shift problem. The model has memorized features of training objects rather than learning generalizable manipulation skills. Solutions include using more robust vision encoders (DINOv2), few-shot adaptation, or fine-tuning on domain objects."
+    }
+  ]}
+/>
 
 ---
 
 ## Next Chapter Preview
 
-In the next chapter, **Humanoid Locomotion & Manipulation**, you will learn about walking and grasping.
+In the next chapter, **Humanoid Locomotion & Manipulation**, you will learn how to control humanoid robots for walking, balancing, and grasping—combining the VLA principles from this chapter with whole-body control for complex physical tasks.

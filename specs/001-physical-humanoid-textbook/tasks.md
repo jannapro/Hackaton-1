@@ -244,18 +244,18 @@
 
 ### Implementation for User Story 5
 
-- [ ] T104 [US5] Query Context7 MCP for VLA curriculum alignment
-- [ ] T105 [US5] Write learning objectives in docs/05-vision-language-action/index.mdx
+- [x] T104 [US5] Query Context7 MCP for VLA curriculum alignment
+- [x] T105 [US5] Write learning objectives in docs/05-vision-language-action/index.mdx
 - [ ] T106 [US5] Create architecture diagram at docs/05-vision-language-action/assets/vla-architecture.png
-- [ ] T107 [US5] Write Vision Encoder section (CLIP, DINOv2) in docs/05-vision-language-action/index.mdx
-- [ ] T108 [US5] Write Language Model Integration section in docs/05-vision-language-action/index.mdx
-- [ ] T109 [US5] Write Action Decoder section in docs/05-vision-language-action/index.mdx
-- [ ] T110 [US5] Write RT-2/OpenVLA Reference Architecture section in docs/05-vision-language-action/index.mdx
-- [ ] T111 [US5] Add code examples for VLA pipeline in docs/05-vision-language-action/index.mdx
-- [ ] T112 [US5] Add quiz on VLA concepts in docs/05-vision-language-action/index.mdx
-- [ ] T113 [US5] Write Common Failure Modes section (memory, latency, preprocessing) in docs/05-vision-language-action/index.mdx
-- [ ] T114 [US5] Document hardware requirements in docs/05-vision-language-action/index.mdx
-- [ ] T115 [US5] Commit Chapter 5 via GitHub MCP
+- [x] T107 [US5] Write Vision Encoder section (CLIP, DINOv2) in docs/05-vision-language-action/index.mdx
+- [x] T108 [US5] Write Language Model Integration section in docs/05-vision-language-action/index.mdx
+- [x] T109 [US5] Write Action Decoder section in docs/05-vision-language-action/index.mdx
+- [x] T110 [US5] Write RT-2/OpenVLA Reference Architecture section in docs/05-vision-language-action/index.mdx
+- [x] T111 [US5] Add code examples for VLA pipeline in docs/05-vision-language-action/index.mdx
+- [x] T112 [US5] Add quiz on VLA concepts in docs/05-vision-language-action/index.mdx
+- [x] T113 [US5] Write Common Failure Modes section (memory, latency, preprocessing) in docs/05-vision-language-action/index.mdx
+- [x] T114 [US5] Document hardware requirements in docs/05-vision-language-action/index.mdx
+- [x] T115 [US5] Commit Chapter 5 via GitHub MCP
 
 **Checkpoint**: Chapter 5 complete and independently testable.
 
