@@ -219,18 +219,18 @@
 
 ### Implementation for User Story 4
 
-- [ ] T092 [US4] Query Context7 MCP for Isaac Sim curriculum alignment
-- [ ] T093 [US4] Write learning objectives in docs/04-nvidia-isaac-robot-intelligence/index.mdx
+- [x] T092 [US4] Query Context7 MCP for Isaac Sim curriculum alignment
+- [x] T093 [US4] Write learning objectives in docs/04-nvidia-isaac-robot-intelligence/index.mdx
 - [ ] T094 [US4] Create architecture diagram at docs/04-nvidia-isaac-robot-intelligence/assets/isaac-architecture.png
-- [ ] T095 [US4] Write Isaac Sim Setup section in docs/04-nvidia-isaac-robot-intelligence/index.mdx
-- [ ] T096 [US4] Write URDF Import section in docs/04-nvidia-isaac-robot-intelligence/index.mdx
-- [ ] T097 [US4] Write Domain Randomization section in docs/04-nvidia-isaac-robot-intelligence/index.mdx
-- [ ] T098 [US4] Write Sim-to-Real Transfer section in docs/04-nvidia-isaac-robot-intelligence/index.mdx
-- [ ] T099 [US4] Add code examples for Isaac Sim in docs/04-nvidia-isaac-robot-intelligence/index.mdx
-- [ ] T100 [US4] Add quiz on sim-to-real concepts in docs/04-nvidia-isaac-robot-intelligence/index.mdx
-- [ ] T101 [US4] Write Common Failure Modes section (GPU, memory, physics) in docs/04-nvidia-isaac-robot-intelligence/index.mdx
-- [ ] T102 [US4] Document hardware requirements (NVIDIA GPU) and CPU alternatives in docs/04-nvidia-isaac-robot-intelligence/index.mdx
-- [ ] T103 [US4] Commit Chapter 4 via GitHub MCP
+- [x] T095 [US4] Write Isaac Sim Setup section in docs/04-nvidia-isaac-robot-intelligence/index.mdx
+- [x] T096 [US4] Write URDF Import section in docs/04-nvidia-isaac-robot-intelligence/index.mdx
+- [x] T097 [US4] Write Domain Randomization section in docs/04-nvidia-isaac-robot-intelligence/index.mdx
+- [x] T098 [US4] Write Sim-to-Real Transfer section in docs/04-nvidia-isaac-robot-intelligence/index.mdx
+- [x] T099 [US4] Add code examples for Isaac Sim in docs/04-nvidia-isaac-robot-intelligence/index.mdx
+- [x] T100 [US4] Add quiz on sim-to-real concepts in docs/04-nvidia-isaac-robot-intelligence/index.mdx
+- [x] T101 [US4] Write Common Failure Modes section (GPU, memory, physics) in docs/04-nvidia-isaac-robot-intelligence/index.mdx
+- [x] T102 [US4] Document hardware requirements (NVIDIA GPU) and CPU alternatives in docs/04-nvidia-isaac-robot-intelligence/index.mdx
+- [x] T103 [US4] Commit Chapter 4 via GitHub MCP
 
 **Checkpoint**: Chapter 4 complete and independently testable.
 

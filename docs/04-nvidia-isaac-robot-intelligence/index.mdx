@@ -9,84 +9,747 @@ keywords:
   - reinforcement learning
   - sim-to-real
   - domain randomization
-description: "GPU-accelerated simulation, reinforcement learning, and sim-to-real transfer with NVIDIA Isaac Sim."
+  - Isaac Lab
+description: "GPU-accelerated simulation, reinforcement learning, and sim-to-real transfer with NVIDIA Isaac Sim and Isaac Lab."
 ---
 
+import Quiz from '@site/src/components/Quiz';
+import CodePlayground from '@site/src/components/CodePlayground';
+import CollapsibleSection from '@site/src/components/CollapsibleSection';
+
 # NVIDIA Isaac & Robot Intelligence
+
+**Estimated Time**: 90-120 minutes
+
+NVIDIA Isaac Sim represents a paradigm shift in robotics simulation—moving from CPU-bound, approximate physics to GPU-accelerated, photorealistic simulation that enables training policies on millions of parallel environments. This chapter explores how Isaac Sim's Omniverse foundation enables domain randomization, reinforcement learning, and sim-to-real transfer at unprecedented scale.
+
+---
 
 ## Learning Objectives
 
 By the end of this chapter, you will be able to:
 
-1. **[LO-01]**: [Placeholder - Set up Isaac Sim]
-2. **[LO-02]**: [Placeholder - Import URDF models]
-3. **[LO-03]**: [Placeholder - Implement domain randomization]
-4. **[LO-04]**: [Placeholder - Understand sim-to-real transfer]
+1. **[LO-01]** (Understand): Explain how GPU-accelerated simulation differs from CPU-based alternatives and identify appropriate use cases for each.
+
+2. **[LO-02]** (Apply): Set up an Isaac Sim workspace and import robot URDF models with correct physics and collision properties.
+
+3. **[LO-03]** (Apply): Implement domain randomization strategies to improve policy robustness across visual, physics, and dynamics parameters.
+
+4. **[LO-04]** (Analyze): Analyze the sim-to-real gap and apply systematic transfer strategies including system identification and policy distillation.
+
+5. **[LO-05]** (Evaluate): Evaluate reinforcement learning training outcomes and diagnose common failure modes in GPU-accelerated robotics workflows.
 
 ---
 
 ## System Architecture
 
-[Placeholder: Isaac Sim architecture]
-
 <!-- Architecture diagram placeholder - to be added during chapter authoring -->
+
+Isaac Sim's architecture builds on NVIDIA Omniverse, a platform for building and operating 3D applications:
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                        Isaac Sim                                │
+├─────────────────────────────────────────────────────────────────┤
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────────┐ │
+│  │   Isaac     │  │   Domain    │  │    Synthetic Data      │ │
+│  │    Lab      │  │ Randomizer  │  │     Generation         │ │
+│  │  (RL/IL)    │  │ (Replicator)│  │    (Perception)        │ │
+│  └──────┬──────┘  └──────┬──────┘  └───────────┬─────────────┘ │
+│         │                │                      │               │
+│  ┌──────┴────────────────┴──────────────────────┴─────────────┐│
+│  │                    Omniverse Kit                           ││
+│  │  ┌──────────────┐  ┌─────────────┐  ┌────────────────────┐ ││
+│  │  │ PhysX 5 GPU  │  │  RTX        │  │  USD Composer      │ ││
+│  │  │   Physics    │  │  Renderer   │  │  (Scene Graph)     │ ││
+│  │  └──────────────┘  └─────────────┘  └────────────────────┘ ││
+│  └────────────────────────────────────────────────────────────┘│
+├─────────────────────────────────────────────────────────────────┤
+│  ┌────────────────────────────────────────────────────────────┐│
+│  │                    CUDA / GPU Runtime                      ││
+│  └────────────────────────────────────────────────────────────┘│
+└─────────────────────────────────────────────────────────────────┘
+```
+
+**Key Components**:
+- **PhysX 5**: GPU-accelerated rigid body, articulation, and soft body physics
+- **RTX Renderer**: Real-time ray tracing for photorealistic sensor simulation
+- **Isaac Lab**: Modular framework for RL, imitation learning, and motion planning
+- **Replicator**: Domain randomization and synthetic data generation
 
 ---
 
 ## Isaac Sim Setup
 
-[Placeholder: Isaac Sim setup content - 500-800 tokens]
+### Installation Requirements
+
+Isaac Sim requires significant GPU resources. Before installation, verify your system meets requirements:
+
+```bash
+# Check NVIDIA driver version (requires 525.60.11+)
+nvidia-smi --query-gpu=driver_version --format=csv,noheader
+
+# Check available GPU memory
+nvidia-smi --query-gpu=memory.total --format=csv,noheader
+
+# Verify CUDA capability (requires compute capability 7.0+)
+nvidia-smi --query-gpu=compute_cap --format=csv,noheader
+```
+
+### Installation via Omniverse Launcher
+
+1. Download the [NVIDIA Omniverse Launcher](https://www.nvidia.com/en-us/omniverse/)
+2. Install Isaac Sim from the Exchange tab
+3. Configure the Nucleus server for asset management
+
+### Headless Installation (Linux Server)
+
+For cloud or headless deployments:
+
+```bash
+# Download Isaac Sim container
+docker pull nvcr.io/nvidia/isaac-sim:4.2.0
+
+# Run with GPU access
+docker run --gpus all -it --rm \
+    -v ~/docker/isaac-sim/cache/kit:/isaac-sim/kit/cache:rw \
+    -v ~/docker/isaac-sim/cache/ov:/root/.cache/ov:rw \
+    -v ~/docker/isaac-sim/cache/pip:/root/.cache/pip:rw \
+    -v ~/docker/isaac-sim/cache/glcache:/root/.cache/nvidia/GLCache:rw \
+    -v ~/docker/isaac-sim/cache/computecache:/root/.nv/ComputeCache:rw \
+    -v ~/docker/isaac-sim/logs:/root/.nvidia-omniverse/logs:rw \
+    -v ~/docker/isaac-sim/data:/root/.local/share/ov/data:rw \
+    nvcr.io/nvidia/isaac-sim:4.2.0
+```
+
+### Isaac Lab Installation
+
+Isaac Lab provides the RL training infrastructure:
+
+```bash
+# Clone Isaac Lab
+git clone https://github.com/isaac-sim/IsaacLab.git
+cd IsaacLab
+
+# Create conda environment
+./isaaclab.sh --install  # Creates isaaclab conda env
+
+# Verify installation
+./isaaclab.sh -p scripts/tutorials/00_sim/spawn_prims.py
+```
+
+<CollapsibleSection title="Troubleshooting: GPU Memory Errors">
+
+If you encounter CUDA out-of-memory errors:
+
+1. **Reduce environment count**: Start with `--num_envs=256` instead of 4096
+2. **Enable GPU memory growth**: Set `export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True`
+3. **Use mixed precision**: Enable FP16 training in your RL config
+4. **Close Omniverse GUI**: Headless mode uses less VRAM
+
+</CollapsibleSection>
 
 ---
 
 ## URDF Import
 
-[Placeholder: URDF import content - 500-800 tokens]
+Isaac Sim uses USD (Universal Scene Description) as its native format, but provides robust URDF import capabilities. Understanding the import process is critical for accurate physics simulation.
+
+### Import Configuration
+
+The URDF importer exposes several parameters that affect physics behavior:
+
+```python
+import omni.kit.commands
+from pxr import UsdLux, Sdf, Gf, UsdPhysics, PhysicsSchemaTools
+
+# Create import configuration
+status, import_config = omni.kit.commands.execute("URDFCreateImportConfig")
+
+# Configure import settings
+import_config.merge_fixed_joints = False      # Keep fixed joints separate
+import_config.convex_decomp = False           # Use mesh colliders
+import_config.import_inertia_tensor = True    # Use URDF inertia values
+import_config.fix_base = False                # Allow base movement
+import_config.collision_from_visuals = False  # Use collision meshes
+import_config.distance_scale = 1.0            # Meters (URDF default)
+
+# Import the URDF file
+omni.kit.commands.execute(
+    "URDFParseAndImportFile",
+    urdf_path="/path/to/robot.urdf",
+    import_config=import_config,
+)
+```
+
+### Scene Setup with Physics
+
+After importing, configure the physics scene:
+
+```python
+import omni
+from pxr import UsdPhysics, Gf, Sdf
+
+# Get stage handle
+stage = omni.usd.get_context().get_stage()
+
+# Create physics scene with GPU acceleration
+scene = UsdPhysics.Scene.Define(stage, Sdf.Path("/physicsScene"))
+scene.CreateGravityDirectionAttr().Set(Gf.Vec3f(0.0, 0.0, -1.0))
+scene.CreateGravityMagnitudeAttr().Set(9.81)
+
+# Enable GPU dynamics
+physx_scene = stage.GetPrimAtPath("/physicsScene")
+physx_scene.GetAttribute("physxScene:enableGPUDynamics").Set(True)
+physx_scene.GetAttribute("physxScene:broadphaseType").Set("GPU")
+
+# Add ground plane with physics
+PhysicsSchemaTools.addGroundPlane(
+    stage,
+    "/World/groundPlane",
+    "Z",           # Up axis
+    1500,          # Size
+    Gf.Vec3f(0, 0, 0),  # Position
+    Gf.Vec3f(0.5)  # Color
+)
+```
+
+### Complete Scene Creation Example
+
+Here's a full example that creates a simulation scene with a robot:
+
+```python
+import numpy as np
+import omni.kit.commands
+from isaacsim import SimulationApp
+
+# Launch Isaac Sim in headless mode
+simulation_app = SimulationApp({"headless": True})
+
+from omni.isaac.core import World
+from omni.isaac.core.utils.prims import create_prim
+from omni.isaac.core.prims import SingleXFormPrim
+from isaacsim.core.utils.extensions import get_extension_path_from_name
+from isaacsim.core.utils.nucleus import get_assets_root_path
+
+# Create simulation world
+simulation_world = World(stage_units_in_meters=1.0)
+simulation_world.scene.add_default_ground_plane()
+
+# Add lighting
+create_prim("/DistantLight", "DistantLight", attributes={"inputs:intensity": 500})
+
+# Load URDF with import config
+status, import_config = omni.kit.commands.execute("URDFCreateImportConfig")
+import_config.merge_fixed_joints = False
+import_config.import_inertia_tensor = True
+import_config.fix_base = False
+import_config.create_physics_scene = False  # Already have physics scene
+
+# Import robot URDF
+extension_path = get_extension_path_from_name("isaacsim.asset.importer.urdf")
+status, stage_path = omni.kit.commands.execute(
+    "URDFParseAndImportFile",
+    urdf_path=extension_path + "/data/urdf/robots/carter/urdf/carter.urdf",
+    import_config=import_config,
+)
+
+# Add semantic labels for perception
+stage = simulation_world.stage
+from omni.isaac.core.utils.semantics import add_labels
+add_labels(stage.GetPrimAtPath(stage_path), labels=["Robot"], instance_name="class")
+
+# Reset and run simulation
+simulation_world.reset()
+for i in range(1000):
+    simulation_world.step(render=True)
+
+simulation_app.close()
+```
+
+<CollapsibleSection title="URDF Import Checklist">
+
+Before importing a URDF, verify:
+
+- [ ] All mesh paths are absolute or correctly relative
+- [ ] Inertia values are physically plausible (no zero values)
+- [ ] Collision meshes exist for all links requiring contact
+- [ ] Joint limits are defined for all non-continuous joints
+- [ ] Mass values are in kilograms, lengths in meters
+- [ ] Visual and collision meshes are in supported formats (OBJ, STL, DAE)
+
+</CollapsibleSection>
 
 ---
 
 ## Domain Randomization
 
-[Placeholder: Domain randomization content - 500-800 tokens]
+Domain randomization is the primary technique for bridging the sim-to-real gap. By training on a distribution of environments, policies learn robust behaviors that transfer to real-world conditions.
+
+### Randomization Categories
+
+| Category | Parameters | Purpose |
+|----------|------------|---------|
+| **Visual** | Lighting, textures, colors, camera noise | Robust perception |
+| **Physics** | Friction, mass, inertia, damping | Dynamics transfer |
+| **Dynamics** | Actuator delays, force limits, joint play | Control robustness |
+| **Sensor** | Noise, dropout, latency, calibration | Sensor generalization |
+
+### Isaac Sim Replicator API
+
+The Replicator extension provides programmatic domain randomization:
+
+```python
+import isaacsim.replicator.domain_randomization as dr
+import omni.replicator.core as rep
+
+# Register physics views for randomization
+dr.physics_view.register_simulation_context(world)
+dr.physics_view.register_rigid_prim_view(object_view)
+dr.physics_view.register_articulation_view(robot_view)
+
+# Define randomization schedule
+num_envs = 256
+num_dof = 7  # Robot degrees of freedom
+
+with dr.trigger.on_rl_frame(num_envs=num_envs):
+    # Randomize gravity every 20 steps
+    with dr.gate.on_interval(interval=20):
+        dr.physics_view.randomize_simulation_context(
+            operation="scaling",
+            gravity=rep.distribution.uniform((1, 1, 0.0), (1, 1, 2.0)),
+        )
+
+    # Apply random forces every 50 steps
+    with dr.gate.on_interval(interval=50):
+        dr.physics_view.randomize_rigid_prim_view(
+            view_name=object_view.name,
+            operation="direct",
+            force=rep.distribution.uniform((0, 0, 2.5), (0, 0, 5.0)),
+        )
+
+    # Randomize joint velocities every 10 steps
+    with dr.gate.on_interval(interval=10):
+        dr.physics_view.randomize_articulation_view(
+            view_name=robot_view.name,
+            operation="direct",
+            joint_velocities=rep.distribution.uniform(
+                tuple([-2] * num_dof),
+                tuple([2] * num_dof)
+            ),
+        )
+
+    # On environment reset: randomize positions
+    with dr.gate.on_env_reset():
+        dr.physics_view.randomize_rigid_prim_view(
+            view_name=object_view.name,
+            operation="additive",
+            position=rep.distribution.normal((0.0, 0.0, 0.0), (0.2, 0.2, 0.0)),
+            velocity=[0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+        )
+        dr.physics_view.randomize_articulation_view(
+            view_name=robot_view.name,
+            operation="additive",
+            joint_positions=rep.distribution.uniform(
+                tuple([-0.5] * num_dof),
+                tuple([0.5] * num_dof)
+            ),
+            position=rep.distribution.normal((0.0, 0.0, 0.0), (0.2, 0.2, 0.0)),
+        )
+
+# Start randomization orchestrator
+rep.orchestrator.run()
+```
+
+### Simulation Loop with Randomization
+
+```python
+# Main training loop
+frame_idx = 0
+while simulation_app.is_running():
+    if world.is_playing():
+        # Determine which environments need reset
+        reset_inds = list()
+        if frame_idx % 200 == 0:
+            reset_inds = np.arange(num_envs)
+
+        # Step domain randomization
+        dr.physics_view.step_randomization(reset_inds)
+
+        # Advance simulation
+        world.step(render=True)
+        frame_idx += 1
+```
+
+### Curriculum-Based Randomization
+
+Start with low randomization and increase as training progresses:
+
+```python
+def get_randomization_strength(epoch: int, max_epochs: int) -> float:
+    """Linearly increase randomization over training."""
+    return min(1.0, epoch / (max_epochs * 0.5))
+
+# Apply curriculum to friction randomization
+strength = get_randomization_strength(current_epoch, total_epochs)
+friction_range = (0.8 - 0.3 * strength, 1.2 + 0.3 * strength)
+```
 
 ---
 
 ## Sim-to-Real Transfer
 
-[Placeholder: Sim-to-real content - 500-800 tokens]
+The sim-to-real gap remains the central challenge in simulation-based robotics. Successful transfer requires systematic approaches across multiple dimensions.
+
+### The Reality Gap
+
+| Gap Type | Manifestation | Mitigation |
+|----------|---------------|------------|
+| **Visual** | Camera differences, lighting | Domain randomization, style transfer |
+| **Dynamics** | Motor response, friction, contact | System identification, dynamics randomization |
+| **Temporal** | Latency, timing jitter | Action delay randomization, robust control |
+| **Kinematic** | Calibration errors, joint play | Kinematic noise, tolerance training |
+
+### System Identification
+
+Before training, calibrate simulation parameters to match your robot:
+
+```python
+import numpy as np
+from scipy.optimize import minimize
+
+def identify_motor_dynamics(real_data: np.ndarray, sim_fn, initial_params: np.ndarray):
+    """
+    Fit simulation motor model to real robot data.
+
+    Args:
+        real_data: (N, 2) array of [command, response] pairs
+        sim_fn: Simulation function sim_fn(command, params) -> response
+        initial_params: Starting parameter values [kp, kd, delay, friction]
+
+    Returns:
+        Optimized parameters
+    """
+    def loss(params):
+        sim_responses = np.array([sim_fn(cmd, params) for cmd in real_data[:, 0]])
+        return np.mean((sim_responses - real_data[:, 1]) ** 2)
+
+    result = minimize(loss, initial_params, method='L-BFGS-B')
+    return result.x
+
+# Example usage
+real_trajectory = np.load("real_robot_data.npy")
+optimized_params = identify_motor_dynamics(
+    real_trajectory,
+    simulate_motor,
+    initial_params=np.array([100.0, 10.0, 0.01, 0.1])
+)
+```
+
+### Teacher-Student Policy Distillation
+
+Train with privileged simulation information, then distill to sensor-only policy:
+
+```bash
+# Step 1: Train teacher policy with privileged observations
+./isaaclab.sh -p scripts/reinforcement_learning/rsl_rl/train.py \
+    --task=Isaac-Velocity-Flat-G1-v1 \
+    --num_envs=4096 \
+    --headless
+
+# Step 2: Distill to student policy (sensor-only observations)
+./isaaclab.sh -p scripts/reinforcement_learning/rsl_rl/train.py \
+    --task=Velocity-G1-Student-Distill-v1 \
+    --num_envs=4096 \
+    --headless \
+    --teacher_policy logs/teacher/model.pt
+
+# Step 3: Fine-tune student with RL
+./isaaclab.sh -p scripts/reinforcement_learning/rsl_rl/train.py \
+    --task=Velocity-G1-Student-Finetune-v1 \
+    --num_envs=4096 \
+    --headless \
+    --load_run 2025-01-28_distillation \
+    --checkpoint model_1499.pt
+```
+
+### Policy Deployment
+
+Export trained policy for real robot:
+
+```bash
+# Export to ONNX for deployment
+./isaaclab.sh -p scripts/reinforcement_learning/rsl_rl/play.py \
+    --task=Velocity-G1-Student-Finetune-v1 \
+    --num_envs=1 \
+    --export_onnx
+
+# Deploy on real robot (Unitree H1 example)
+${ISAACLAB_PATH}/isaaclab.sh -p neural_wbc/inference_env/scripts/s2r_player.py \
+    --student_path neural_wbc/data/policy/h1:student/ \
+    --student_checkpoint model_5000.pt \
+    --reference_motion_path neural_wbc/data/motions/walk.pkl \
+    --robot unitree_h1 \
+    --max_iterations 5000 \
+    --num_envs 1
+```
 
 ---
 
-## Practical Implementation
+## Reinforcement Learning with Isaac Lab
 
-[Placeholder: Code examples]
+Isaac Lab provides a modular framework for RL training with GPU-accelerated environments.
+
+### Training Configuration
+
+```python
+# Example: PPO configuration for locomotion
+from omni.isaac.lab.utils import configclass
+
+@configclass
+class PPORunnerCfg:
+    seed: int = 42
+    num_steps_per_env: int = 24
+    max_iterations: int = 1500
+
+    # Algorithm hyperparameters
+    learning_rate: float = 1e-3
+    gamma: float = 0.99
+    lam: float = 0.95
+    entropy_coeff: float = 0.01
+    clip_param: float = 0.2
+
+    # Network architecture
+    policy_hidden_dims: list = [512, 256, 128]
+    value_hidden_dims: list = [512, 256, 128]
+    activation: str = "elu"
+```
+
+### Training Commands
+
+```bash
+# Basic PPO training
+./isaaclab.sh -p scripts/reinforcement_learning/rsl_rl/train.py \
+    --task Isaac-Cartpole-v0 \
+    --headless \
+    --run_name ppo_cartpole
+
+# Locomotion training with many environments
+./isaaclab.sh -p scripts/reinforcement_learning/rsl_rl/train.py \
+    --task Isaac-Velocity-Rough-Anymal-D-v0 \
+    --num_envs 4096 \
+    --headless \
+    --max_iterations 5000
+
+# Resume training from checkpoint
+./isaaclab.sh -p scripts/reinforcement_learning/rsl_rl/train.py \
+    --task Isaac-Velocity-Rough-Anymal-D-v0 \
+    --num_envs 4096 \
+    --headless \
+    --resume \
+    --load_run 2025-01-28_locomotion
+```
+
+### Evaluating Trained Policies
+
+```bash
+# Play trained policy with visualization
+./isaaclab.sh -p scripts/reinforcement_learning/rsl_rl/play.py \
+    --task Isaac-Velocity-Rough-Anymal-D-v0 \
+    --num_envs 32 \
+    --load_run 2025-01-28_locomotion \
+    --checkpoint model_5000.pt
+```
 
 ---
 
 ## Common Failure Modes
 
-[Placeholder: GPU, memory, physics issues]
+### 1. GPU Out-of-Memory (OOM)
+
+**Symptoms**: CUDA memory allocation errors, training crashes after initialization.
+
+**Diagnosis**:
+```bash
+# Monitor GPU memory during training
+watch -n 1 nvidia-smi
+
+# Check per-process memory usage
+nvidia-smi pmon -s m
+```
+
+**Resolution**:
+- Reduce `--num_envs` (start with 256, scale up)
+- Enable memory-efficient attention if using transformers
+- Use gradient checkpointing for large networks
+- Switch to FP16 training
+
+### 2. Physics Instability (Exploding Simulation)
+
+**Symptoms**: NaN values in observations, robots flying off screen, unrealistic velocities.
+
+**Diagnosis**:
+```python
+# Add physics validation
+def check_physics_sanity(obs: torch.Tensor) -> bool:
+    if torch.isnan(obs).any():
+        return False
+    if torch.abs(obs).max() > 1e6:
+        return False
+    return True
+```
+
+**Resolution**:
+- Reduce physics timestep (increase `decimation`)
+- Check URDF inertia values (avoid zeros, very small values)
+- Enable solver position/velocity iterations
+- Add joint damping to stabilize high-frequency oscillations
+
+### 3. Domain Randomization Collapse
+
+**Symptoms**: Policy works in simulation but fails immediately on real robot.
+
+**Diagnosis**:
+- Compare simulation and real robot sensor distributions
+- Check if randomization ranges cover real-world conditions
+- Verify timing assumptions match real system latency
+
+**Resolution**:
+- Expand randomization ranges beyond expected real-world variation
+- Add action delay randomization matching real system latency
+- Include sensor noise models calibrated to real sensors
+
+### 4. Reward Hacking
+
+**Symptoms**: High training reward but undesirable or dangerous behavior.
+
+**Diagnosis**:
+```python
+# Log individual reward components
+writer.add_scalar("reward/forward_velocity", forward_reward, step)
+writer.add_scalar("reward/energy_penalty", energy_penalty, step)
+writer.add_scalar("reward/smoothness", smoothness_reward, step)
+```
+
+**Resolution**:
+- Decompose rewards and monitor each component
+- Add constraints as hard termination conditions
+- Use reward shaping with curriculum learning
+- Implement safety constraints in action space
+
+### 5. Sim-to-Real Dynamics Mismatch
+
+**Symptoms**: Policy transfers but exhibits oscillations, overshooting, or sluggish response.
+
+**Diagnosis**:
+```python
+# Compare frequency response
+def analyze_frequency_response(commands, responses, dt):
+    from scipy import signal
+    f, Pxx = signal.welch(responses - commands, fs=1/dt)
+    return f, Pxx
+```
+
+**Resolution**:
+- Run system identification on real robot
+- Add actuator dynamics model (motor delay, bandwidth limits)
+- Randomize PD gains during training
+- Use domain adaptation or fine-tuning on real data
 
 ---
 
 ## Hardware and Compute Requirements
 
-| Requirement | Minimum | Recommended |
-|-------------|---------|-------------|
-| Operating System | Ubuntu 22.04 LTS | Ubuntu 22.04 LTS |
-| RAM | 32 GB | 64 GB |
-| GPU | NVIDIA RTX 2070 | NVIDIA RTX 3080+ |
+| Requirement | Minimum | Recommended | Cloud Alternative |
+|-------------|---------|-------------|-------------------|
+| Operating System | Ubuntu 22.04 LTS | Ubuntu 22.04 LTS | AWS/GCP Linux VMs |
+| GPU | NVIDIA RTX 2070 (8GB) | NVIDIA RTX 4090 (24GB) | NVIDIA A100 (40GB) |
+| GPU Driver | 525.60.11+ | 535.104.05+ | Managed by cloud |
+| CUDA | 12.0+ | 12.2+ | Included in NGC |
+| CPU | 8 cores | 16+ cores | c5.4xlarge+ |
+| RAM | 32 GB | 64 GB | 64 GB+ |
+| Storage | 100 GB SSD | 500 GB NVMe | EBS gp3 |
 
-**For learners without GPU access**: Use cloud-based GPU instances or Gazebo alternatives.
+**For learners without GPU access**:
+- Use [NVIDIA NGC Catalog](https://catalog.ngc.nvidia.com/) containers on cloud GPUs
+- AWS EC2 `g5.xlarge` (~$1/hour) provides RTX A10G
+- Google Cloud `a2-highgpu-1g` provides A100
+- Lambda Labs offers competitive GPU cloud pricing
+
+**CPU-Only Alternatives**:
+- Use Gazebo for initial development (covered in Chapter 3)
+- MuJoCo provides fast CPU simulation for algorithm prototyping
+- PyBullet works for smaller-scale experiments
 
 ---
 
 ## Summary
 
-[Placeholder: Chapter summary]
+This chapter covered NVIDIA Isaac Sim's GPU-accelerated simulation ecosystem:
+
+- **Isaac Sim Architecture**: Built on Omniverse with PhysX 5 GPU physics and RTX rendering
+- **URDF Import**: Configuration options for physics-accurate robot models
+- **Domain Randomization**: Replicator API for systematic sim-to-real robustness
+- **Sim-to-Real Transfer**: System identification, teacher-student distillation, policy deployment
+- **Isaac Lab**: Modular RL framework with PPO training and evaluation
+
+The key insight is that simulation fidelity matters less than **distribution coverage**—training on diverse, randomized conditions produces policies that generalize to real-world variation.
+
+---
+
+## Knowledge Check
+
+<Quiz
+  questions={[
+    {
+      question: "What is the primary advantage of GPU-accelerated simulation for reinforcement learning?",
+      options: [
+        "Higher visual fidelity",
+        "Massively parallel environment execution",
+        "Lower hardware costs",
+        "Simpler API design"
+      ],
+      correctIndex: 1,
+      explanation: "GPU acceleration enables running thousands of parallel environments simultaneously, dramatically increasing sample throughput for RL training. A single RTX 4090 can simulate 4096+ environments in real-time."
+    },
+    {
+      question: "Why does domain randomization help with sim-to-real transfer?",
+      options: [
+        "It makes the simulation more realistic",
+        "It reduces training time",
+        "It forces policies to learn features robust to environmental variation",
+        "It eliminates the need for real-world testing"
+      ],
+      correctIndex: 2,
+      explanation: "Domain randomization exposes the policy to a distribution of environments during training. Policies that succeed across this distribution learn invariant features rather than overfitting to specific simulation parameters."
+    },
+    {
+      question: "In teacher-student policy distillation, what distinguishes the teacher from the student?",
+      options: [
+        "The teacher uses a larger neural network",
+        "The teacher has access to privileged simulation state not available on real robots",
+        "The teacher trains for more iterations",
+        "The teacher uses a different RL algorithm"
+      ],
+      correctIndex: 1,
+      explanation: "The teacher policy trains with privileged information (e.g., true object poses, contact forces, terrain maps) that sensors cannot observe. The student learns to approximate teacher behavior using only sensor-available observations."
+    },
+    {
+      question: "If your RL-trained policy exhibits high reward but dangerous behavior, what is the most likely cause?",
+      options: [
+        "Insufficient training iterations",
+        "Learning rate too high",
+        "Reward function can be exploited without achieving intended behavior",
+        "Domain randomization range too narrow"
+      ],
+      correctIndex: 2,
+      explanation: "This is reward hacking—the policy found a way to maximize reward without achieving the designer's intent. Solutions include reward decomposition monitoring, hard safety constraints, and careful reward function design."
+    }
+  ]}
+/>
 
 ---
 
 ## Next Chapter Preview
 
-In the next chapter, **Vision-Language-Action Systems**, you will learn about VLA pipelines.
+In the next chapter, **Vision-Language-Action Systems**, you will learn how to connect perception (vision encoders), language understanding (LLMs), and robotic action through VLA pipelines—enabling robots to follow natural language instructions grounded in visual observations.
