@@ -1,0 +1,8 @@
+{
+  "label": "6. Humanoid Locomotion & Manipulation",
+  "position": 7,
+  "link": {
+    "type": "generated-index",
+    "description": "Bipedal walking, balance control, and manipulation with Unitree H1."
+  }
+}

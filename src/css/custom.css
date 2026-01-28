@@ -1,0 +1,114 @@
+/**
+ * Physical Humanoid Robots Textbook - Custom Styles
+ * T016/T017: Technical, futuristic UI theme for robotics education
+ */
+
+/* Light mode - technical, clean appearance */
+:root {
+  /* Primary color - robotics blue */
+  --ifm-color-primary: #0066cc;
+  --ifm-color-primary-dark: #005cb8;
+  --ifm-color-primary-darker: #0056ad;
+  --ifm-color-primary-darkest: #00478f;
+  --ifm-color-primary-light: #0070e0;
+  --ifm-color-primary-lighter: #0076eb;
+  --ifm-color-primary-lightest: #1a8fff;
+
+  /* Code styling */
+  --ifm-code-font-size: 90%;
+  --docusaurus-highlighted-code-line-bg: rgba(0, 102, 204, 0.1);
+
+  /* Font configuration - technical/mono-friendly */
+  --ifm-font-family-base: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --ifm-font-family-monospace: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace;
+
+  /* Spacing and layout */
+  --ifm-global-radius: 4px;
+  --ifm-code-border-radius: 4px;
+
+  /* Content width for readability */
+  --ifm-container-width-xl: 1200px;
+}
+
+/* Dark mode - for comfortable reading during long study sessions */
+[data-theme='dark'] {
+  --ifm-color-primary: #4da6ff;
+  --ifm-color-primary-dark: #2e97ff;
+  --ifm-color-primary-darker: #1f8fff;
+  --ifm-color-primary-darkest: #0073e6;
+  --ifm-color-primary-light: #6cb5ff;
+  --ifm-color-primary-lighter: #7bbdff;
+  --ifm-color-primary-lightest: #a3d1ff;
+  --docusaurus-highlighted-code-line-bg: rgba(77, 166, 255, 0.15);
+
+  /* Dark mode background - easy on the eyes */
+  --ifm-background-color: #1a1a2e;
+  --ifm-background-surface-color: #16213e;
+}
+
+/* Code blocks - optimized for ROS 2 / Python readability */
+.prism-code {
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+/* Learning objectives styling */
+.learning-objectives {
+  background: linear-gradient(135deg, var(--ifm-color-primary-lightest) 0%, transparent 100%);
+  border-left: 4px solid var(--ifm-color-primary);
+  padding: 1rem 1.5rem;
+  margin: 1.5rem 0;
+  border-radius: 0 var(--ifm-global-radius) var(--ifm-global-radius) 0;
+}
+
+/* Architecture diagram containers */
+.architecture-diagram {
+  text-align: center;
+  margin: 2rem 0;
+  padding: 1rem;
+  background: var(--ifm-background-surface-color);
+  border-radius: var(--ifm-global-radius);
+}
+
+.architecture-diagram img {
+  max-width: 100%;
+  height: auto;
+}
+
+/* Failure mode warnings */
+.failure-mode {
+  border-left: 4px solid #ff6b6b;
+  background: rgba(255, 107, 107, 0.1);
+  padding: 1rem 1.5rem;
+  margin: 1rem 0;
+  border-radius: 0 var(--ifm-global-radius) var(--ifm-global-radius) 0;
+}
+
+/* Hardware requirements table styling */
+.hardware-requirements table {
+  width: 100%;
+}
+
+.hardware-requirements th {
+  background: var(--ifm-color-primary);
+  color: white;
+}
+
+/* Quiz component styling placeholder */
+.quiz-container {
+  border: 2px solid var(--ifm-color-primary);
+  border-radius: var(--ifm-global-radius);
+  padding: 1.5rem;
+  margin: 2rem 0;
+}
+
+/* Responsive adjustments for mobile learning */
+@media (max-width: 768px) {
+  .prism-code {
+    font-size: 12px;
+  }
+
+  :root {
+    --ifm-code-font-size: 85%;
+  }
+}

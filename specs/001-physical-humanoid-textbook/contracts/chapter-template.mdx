@@ -1,0 +1,218 @@
+---
+id: "[CHAPTER_ID]"
+title: "[CHAPTER_TITLE]"
+sidebar_label: "[CHAPTER_NUMBER]. [CHAPTER_SHORT_TITLE]"
+sidebar_position: [CHAPTER_NUMBER]
+keywords:
+  - [keyword1]
+  - [keyword2]
+  - [keyword3]
+description: "[CHAPTER_DESCRIPTION - 150-160 characters for SEO]"
+---
+
+# [CHAPTER_TITLE]
+
+## Learning Objectives
+
+By the end of this chapter, you will be able to:
+
+1. **[LO-01]**: [Measurable objective with action verb - Bloom's level indicated]
+2. **[LO-02]**: [Measurable objective with action verb]
+3. **[LO-03]**: [Measurable objective with action verb]
+4. **[LO-04]**: [Optional - Measurable objective with action verb]
+5. **[LO-05]**: [Optional - Measurable objective with action verb]
+
+---
+
+## System Architecture
+
+[Brief introduction to the system architecture for this chapter's domain]
+
+![Architecture Diagram](./assets/[CHAPTER_ID]-architecture.png)
+
+**Components**:
+
+| Component | Role | Key Interfaces |
+|-----------|------|----------------|
+| [Component 1] | [What it does] | [How it connects] |
+| [Component 2] | [What it does] | [How it connects] |
+| [Component 3] | [What it does] | [How it connects] |
+
+---
+
+## [Section 1 Title]
+
+[Content - target 500-800 tokens per section]
+
+[Subsections as needed with H3 headers]
+
+### [Subsection 1.1]
+
+[Content]
+
+### [Subsection 1.2]
+
+[Content]
+
+---
+
+## [Section 2 Title]
+
+[Content - target 500-800 tokens per section]
+
+---
+
+## [Section 3 Title]
+
+[Content - target 500-800 tokens per section]
+
+---
+
+## Practical Implementation
+
+[Hands-on implementation guidance]
+
+### Code Example: [Example Title]
+
+```python
+#!/usr/bin/env python3
+"""
+[Brief description of what this code does]
+
+Requirements:
+- ROS 2 Humble or Iron
+- [dependency]: [version]
+
+Run with:
+  ros2 run [package] [node]
+"""
+
+import rclpy
+from rclpy.node import Node
+
+class ExampleNode(Node):
+    def __init__(self):
+        super().__init__('example_node')
+        # Implementation here
+
+def main(args=None):
+    rclpy.init(args=args)
+    node = ExampleNode()
+    rclpy.spin(node)
+    node.destroy_node()
+    rclpy.shutdown()
+
+if __name__ == '__main__':
+    main()
+```
+
+**Expected Output**:
+```
+[Sample output from running the code]
+```
+
+<details>
+<summary>Open in Google Colab</summary>
+
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/[REPO]/blob/main/notebooks/[CHAPTER_ID].ipynb)
+
+</details>
+
+---
+
+## Common Failure Modes
+
+### Failure Mode 1: [Symptom]
+
+**Cause**: [Root cause explanation]
+
+**Resolution**:
+1. [Step 1]
+2. [Step 2]
+3. [Step 3]
+
+**Prevention**: [How to avoid this in future]
+
+---
+
+### Failure Mode 2: [Symptom]
+
+**Cause**: [Root cause explanation]
+
+**Resolution**:
+1. [Step 1]
+2. [Step 2]
+
+---
+
+### Failure Mode 3: [Symptom]
+
+**Cause**: [Root cause explanation]
+
+**Resolution**:
+1. [Step 1]
+2. [Step 2]
+
+---
+
+## Hardware and Compute Requirements
+
+| Requirement | Minimum | Recommended |
+|-------------|---------|-------------|
+| Operating System | Ubuntu 22.04 LTS | Ubuntu 22.04 LTS |
+| ROS 2 | Humble | Humble or Iron |
+| RAM | [X] GB | [Y] GB |
+| Storage | [X] GB free | [Y] GB free |
+| GPU | [None/Required/Optional] | [Spec if applicable] |
+
+**For learners without GPU access**: [Alternative approach or cloud options]
+
+---
+
+## Summary
+
+[Brief recap of key concepts - 200-300 words]
+
+**Key Takeaways**:
+- [Takeaway 1]
+- [Takeaway 2]
+- [Takeaway 3]
+
+---
+
+## Knowledge Check
+
+<Quiz>
+  <Question id="q1" type="multiple-choice">
+    <QuestionText>[Question text]</QuestionText>
+    <Option id="a">[Option A]</Option>
+    <Option id="b">[Option B]</Option>
+    <Option id="c">[Option C]</Option>
+    <Option id="d">[Option D]</Option>
+    <CorrectAnswer>b</CorrectAnswer>
+    <Explanation>[Why B is correct]</Explanation>
+  </Question>
+
+  <Question id="q2" type="true-false">
+    <QuestionText>[Statement to evaluate]</QuestionText>
+    <CorrectAnswer>true</CorrectAnswer>
+    <Explanation>[Why true/false]</Explanation>
+  </Question>
+</Quiz>
+
+---
+
+## Further Reading
+
+- [Resource 1 - Title](URL) - Brief description
+- [Resource 2 - Title](URL) - Brief description
+- [Resource 3 - Title](URL) - Brief description
+
+---
+
+## Next Chapter Preview
+
+In the next chapter, **[Next Chapter Title]**, you will learn:
+- [Preview point 1]
+- [Preview point 2]
+- [Preview point 3]
