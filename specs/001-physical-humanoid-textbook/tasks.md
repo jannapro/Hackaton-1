@@ -295,17 +295,17 @@
 
 ### Implementation for User Story 7
 
-- [ ] T129 [US7] Query Context7 MCP for conversational robotics curriculum alignment
-- [ ] T130 [US7] Write learning objectives in docs/07-conversational-robotics/index.mdx
+- [x] T129 [US7] Query Context7 MCP for conversational robotics curriculum alignment
+- [x] T130 [US7] Write learning objectives in docs/07-conversational-robotics/index.mdx
 - [ ] T131 [US7] Create architecture diagram at docs/07-conversational-robotics/assets/conversational-architecture.png
-- [ ] T132 [US7] Write ASR section (Whisper integration) in docs/07-conversational-robotics/index.mdx
-- [ ] T133 [US7] Write NLU section (intent classification) in docs/07-conversational-robotics/index.mdx
-- [ ] T134 [US7] Write Dialogue Management section in docs/07-conversational-robotics/index.mdx
-- [ ] T135 [US7] Write TTS section (Piper/Coqui) in docs/07-conversational-robotics/index.mdx
-- [ ] T136 [US7] Add code examples for ROS 2 voice interface in docs/07-conversational-robotics/index.mdx
-- [ ] T137 [US7] Add quiz on conversational robotics concepts in docs/07-conversational-robotics/index.mdx
-- [ ] T138 [US7] Write Common Failure Modes section (noise, latency, intent) in docs/07-conversational-robotics/index.mdx
-- [ ] T139 [US7] Document hardware requirements (microphone, speakers) in docs/07-conversational-robotics/index.mdx
+- [x] T132 [US7] Write ASR section (Whisper integration) in docs/07-conversational-robotics/index.mdx
+- [x] T133 [US7] Write NLU section (intent classification) in docs/07-conversational-robotics/index.mdx
+- [x] T134 [US7] Write Dialogue Management section in docs/07-conversational-robotics/index.mdx
+- [x] T135 [US7] Write TTS section (Piper/Coqui) in docs/07-conversational-robotics/index.mdx
+- [x] T136 [US7] Add code examples for ROS 2 voice interface in docs/07-conversational-robotics/index.mdx
+- [x] T137 [US7] Add quiz on conversational robotics concepts in docs/07-conversational-robotics/index.mdx
+- [x] T138 [US7] Write Common Failure Modes section (noise, latency, intent) in docs/07-conversational-robotics/index.mdx
+- [x] T139 [US7] Document hardware requirements (microphone, speakers) in docs/07-conversational-robotics/index.mdx
 - [ ] T140 [US7] Commit Chapter 7 via GitHub MCP
 
 **Checkpoint**: Chapter 7 complete and independently testable.
@@ -320,16 +320,16 @@
 
 ### Implementation for User Story 8
 
-- [ ] T141 [US8] Query Context7 MCP for capstone integration alignment
-- [ ] T142 [US8] Write learning objectives in docs/08-capstone-autonomous-agent/index.mdx
+- [x] T141 [US8] Query Context7 MCP for capstone integration alignment
+- [x] T142 [US8] Write learning objectives in docs/08-capstone-autonomous-agent/index.mdx
 - [ ] T143 [US8] Create integration architecture diagram at docs/08-capstone-autonomous-agent/assets/capstone-architecture.png
-- [ ] T144 [US8] Write System Integration section (all chapters connected) in docs/08-capstone-autonomous-agent/index.mdx
-- [ ] T145 [US8] Write Task Sequence Definition section in docs/08-capstone-autonomous-agent/index.mdx
-- [ ] T146 [US8] Write Subsystem Coordination section in docs/08-capstone-autonomous-agent/index.mdx
-- [ ] T147 [US8] Add complete Unitree H1 autonomous agent code example in docs/08-capstone-autonomous-agent/index.mdx
-- [ ] T148 [US8] Add capstone quiz covering all chapters in docs/08-capstone-autonomous-agent/index.mdx
-- [ ] T149 [US8] Write Common Failure Modes section (subsystem isolation, debugging) in docs/08-capstone-autonomous-agent/index.mdx
-- [ ] T150 [US8] Document hardware requirements (full simulation stack) in docs/08-capstone-autonomous-agent/index.mdx
+- [x] T144 [US8] Write System Integration section (all chapters connected) in docs/08-capstone-autonomous-agent/index.mdx
+- [x] T145 [US8] Write Task Sequence Definition section in docs/08-capstone-autonomous-agent/index.mdx
+- [x] T146 [US8] Write Subsystem Coordination section in docs/08-capstone-autonomous-agent/index.mdx
+- [x] T147 [US8] Add complete Unitree H1 autonomous agent code example in docs/08-capstone-autonomous-agent/index.mdx
+- [x] T148 [US8] Add capstone quiz covering all chapters in docs/08-capstone-autonomous-agent/index.mdx
+- [x] T149 [US8] Write Common Failure Modes section (subsystem isolation, debugging) in docs/08-capstone-autonomous-agent/index.mdx
+- [x] T150 [US8] Document hardware requirements (full simulation stack) in docs/08-capstone-autonomous-agent/index.mdx
 - [ ] T151 [US8] Commit Chapter 8 via GitHub MCP
 
 **Checkpoint**: Capstone chapter complete, all 8 chapters authored.

@@ -10,74 +10,1057 @@ keywords:
   - dialogue management
   - TTS
   - Whisper
-  - Piper
+  - speech recognition
 description: "Natural language interaction with robots: ASR, NLU, dialogue management, and TTS integration."
 ---
 
+import Quiz from '@site/src/components/Quiz';
+import CodePlayground from '@site/src/components/CodePlayground';
+import CollapsibleSection from '@site/src/components/CollapsibleSection';
+
 # Conversational Robotics
+
+**Estimated Time**: 75-90 minutes
+
+Voice is the most natural human interface—we've evolved over millennia to communicate through speech. Conversational robotics brings this capability to robots, enabling natural language commands, status queries, and collaborative dialogue. This chapter covers the complete speech pipeline from microphone input to robot action.
+
+---
 
 ## Learning Objectives
 
 By the end of this chapter, you will be able to:
 
-1. **[LO-01]**: [Placeholder - Integrate ASR with Whisper]
-2. **[LO-02]**: [Placeholder - Implement NLU for intent classification]
-3. **[LO-03]**: [Placeholder - Build dialogue management]
-4. **[LO-04]**: [Placeholder - Add TTS with Piper]
+1. **[LO-01]** (Apply): Integrate OpenAI Whisper for automatic speech recognition in a ROS 2 robotics application.
+
+2. **[LO-02]** (Apply): Implement intent classification and slot filling for understanding robot commands.
+
+3. **[LO-03]** (Analyze): Design dialogue state machines that handle multi-turn conversations and error recovery.
+
+4. **[LO-04]** (Apply): Add text-to-speech synthesis for robot verbal responses using lightweight neural TTS.
+
+5. **[LO-05]** (Evaluate): Evaluate conversational system performance and diagnose common failure modes in noisy environments.
 
 ---
 
 ## System Architecture
 
-[Placeholder: Conversational robotics architecture]
-
 <!-- Architecture diagram placeholder - to be added during chapter authoring -->
+
+The conversational robotics pipeline transforms speech into robot actions and verbalizes responses:
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                   Conversational Robotics Pipeline                       │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                          │
+│  ┌──────────────┐     ┌──────────────────┐     ┌──────────────────────┐ │
+│  │  Microphone  │────▶│   VAD (Voice     │────▶│   ASR (Whisper)      │ │
+│  │   Array      │     │   Activity)      │     │   Speech → Text      │ │
+│  └──────────────┘     └──────────────────┘     └──────────┬───────────┘ │
+│                                                            │             │
+│                                                            ▼             │
+│                              ┌─────────────────────────────────────────┐│
+│                              │   NLU (Natural Language Understanding) ││
+│                              │   • Intent Classification              ││
+│                              │   • Entity/Slot Extraction             ││
+│                              │   • Context Resolution                 ││
+│                              └────────────────────┬────────────────────┘│
+│                                                   │                      │
+│                                                   ▼                      │
+│                              ┌─────────────────────────────────────────┐│
+│                              │        Dialogue Manager                 ││
+│                              │   • State Tracking                      ││
+│                              │   • Policy Selection                    ││
+│                              │   • Action Dispatch                     ││
+│                              └───────────┬─────────────┬───────────────┘│
+│                                          │             │                 │
+│                    ┌─────────────────────┘             └──────────┐      │
+│                    ▼                                              ▼      │
+│  ┌─────────────────────────────────┐    ┌──────────────────────────────┐│
+│  │    Robot Action Executor        │    │    Response Generator        ││
+│  │    (Navigation, Manipulation)   │    │    (Text → TTS → Speaker)    ││
+│  └─────────────────────────────────┘    └──────────────────────────────┘│
+│                                                                          │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+**Key Design Principle**: Each stage operates asynchronously—ASR doesn't block on TTS, and robot actions execute in parallel with verbal feedback.
 
 ---
 
 ## ASR (Automatic Speech Recognition)
 
-[Placeholder: Whisper integration content - 500-800 tokens]
+### OpenAI Whisper
+
+Whisper is a transformer-based ASR model trained on 680,000 hours of multilingual audio, providing robust recognition across accents, noise conditions, and languages.
+
+### Basic Transcription
+
+```python
+import whisper
+
+# Load model (turbo is fastest, large-v3 is most accurate)
+model = whisper.load_model("turbo")
+
+# Simple transcription
+result = model.transcribe("command.wav")
+print(result["text"])  # "Navigate to the kitchen"
+print(result["language"])  # "en"
+```
+
+### Model Selection
+
+| Model | Parameters | VRAM | Speed | Accuracy | Use Case |
+|-------|------------|------|-------|----------|----------|
+| `tiny` | 39M | 1 GB | Real-time | Lower | Edge devices |
+| `base` | 74M | 1 GB | Real-time | Good | Embedded |
+| `small` | 244M | 2 GB | Fast | Better | Standard |
+| `medium` | 769M | 5 GB | Moderate | High | Production |
+| `turbo` | 809M | 6 GB | Fast | Very High | Recommended |
+| `large-v3` | 1550M | 10 GB | Slow | Best | Accuracy-critical |
+
+### Real-Time Streaming with Faster-Whisper
+
+For low-latency robotics, use faster-whisper with CTranslate2:
+
+```python
+from faster_whisper import WhisperModel
+import numpy as np
+import sounddevice as sd
+from queue import Queue
+import threading
+
+class RealTimeASR:
+    """Low-latency streaming ASR using faster-whisper."""
+
+    def __init__(self, model_size: str = "small", device: str = "cuda"):
+        """
+        Args:
+            model_size: Whisper model size
+            device: "cuda" for GPU, "cpu" for CPU
+        """
+        self.model = WhisperModel(
+            model_size,
+            device=device,
+            compute_type="float16" if device == "cuda" else "int8"
+        )
+        self.sample_rate = 16000
+        self.chunk_duration = 0.5  # 500ms chunks
+        self.audio_queue = Queue()
+        self.running = False
+
+    def audio_callback(self, indata, frames, time, status):
+        """Callback for sounddevice stream."""
+        if status:
+            print(f"Audio status: {status}")
+        self.audio_queue.put(indata.copy())
+
+    def process_loop(self, callback):
+        """Process audio chunks and call callback with transcriptions."""
+        audio_buffer = np.array([], dtype=np.float32)
+
+        while self.running:
+            # Accumulate audio
+            while not self.audio_queue.empty():
+                chunk = self.audio_queue.get()
+                audio_buffer = np.concatenate([audio_buffer, chunk.flatten()])
+
+            # Process when we have enough audio (2 seconds minimum)
+            if len(audio_buffer) >= self.sample_rate * 2:
+                segments, _ = self.model.transcribe(
+                    audio_buffer,
+                    language="en",
+                    vad_filter=True,
+                    vad_parameters=dict(
+                        min_silence_duration_ms=500,
+                        speech_pad_ms=200
+                    )
+                )
+
+                for segment in segments:
+                    callback(segment.text.strip())
+
+                # Keep last 0.5 seconds for continuity
+                audio_buffer = audio_buffer[-int(self.sample_rate * 0.5):]
+
+    def start(self, callback):
+        """Start real-time transcription."""
+        self.running = True
+
+        # Start audio stream
+        self.stream = sd.InputStream(
+            samplerate=self.sample_rate,
+            channels=1,
+            dtype=np.float32,
+            callback=self.audio_callback,
+            blocksize=int(self.sample_rate * self.chunk_duration)
+        )
+        self.stream.start()
+
+        # Start processing thread
+        self.process_thread = threading.Thread(
+            target=self.process_loop,
+            args=(callback,)
+        )
+        self.process_thread.start()
+
+    def stop(self):
+        """Stop transcription."""
+        self.running = False
+        self.stream.stop()
+        self.process_thread.join()
+
+
+# Usage
+def on_transcription(text: str):
+    print(f"Heard: {text}")
+
+asr = RealTimeASR(model_size="small")
+asr.start(on_transcription)
+# ... robot operation ...
+asr.stop()
+```
+
+### Voice Activity Detection (VAD)
+
+Filter out silence before ASR to reduce computation:
+
+```python
+import torch
+import numpy as np
+
+class SileroVAD:
+    """Voice Activity Detection using Silero VAD."""
+
+    def __init__(self, threshold: float = 0.5):
+        self.model, utils = torch.hub.load(
+            'snakers4/silero-vad',
+            'silero_vad',
+            trust_repo=True
+        )
+        self.get_speech_timestamps = utils[0]
+        self.threshold = threshold
+
+    def detect_speech(self, audio: np.ndarray, sample_rate: int = 16000) -> list:
+        """
+        Detect speech segments in audio.
+
+        Args:
+            audio: Audio waveform
+            sample_rate: Audio sample rate
+
+        Returns:
+            List of (start_ms, end_ms) tuples for speech segments
+        """
+        audio_tensor = torch.tensor(audio, dtype=torch.float32)
+
+        speech_timestamps = self.get_speech_timestamps(
+            audio_tensor,
+            self.model,
+            threshold=self.threshold,
+            sampling_rate=sample_rate
+        )
+
+        segments = []
+        for segment in speech_timestamps:
+            start_ms = int(segment['start'] / sample_rate * 1000)
+            end_ms = int(segment['end'] / sample_rate * 1000)
+            segments.append((start_ms, end_ms))
+
+        return segments
+
+    def extract_speech(self, audio: np.ndarray, sample_rate: int = 16000) -> np.ndarray:
+        """Extract only speech portions from audio."""
+        segments = self.detect_speech(audio, sample_rate)
+
+        if not segments:
+            return np.array([])
+
+        speech_audio = []
+        for start_ms, end_ms in segments:
+            start_sample = int(start_ms * sample_rate / 1000)
+            end_sample = int(end_ms * sample_rate / 1000)
+            speech_audio.append(audio[start_sample:end_sample])
+
+        return np.concatenate(speech_audio)
+```
 
 ---
 
 ## NLU (Natural Language Understanding)
 
-[Placeholder: Intent classification content - 500-800 tokens]
+NLU transforms transcribed text into structured intents and entities that the robot can act upon.
+
+### Intent Classification
+
+```python
+from dataclasses import dataclass
+from typing import Dict, List, Optional
+from enum import Enum
+import re
+
+class RobotIntent(Enum):
+    """Intents the robot can handle."""
+    NAVIGATE = "navigate"
+    PICK_UP = "pick_up"
+    PLACE = "place"
+    STOP = "stop"
+    STATUS = "status"
+    HELP = "help"
+    UNKNOWN = "unknown"
+
+
+@dataclass
+class NLUResult:
+    """Result of NLU processing."""
+    intent: RobotIntent
+    confidence: float
+    entities: Dict[str, str]
+    raw_text: str
+
+
+class RuleBasedNLU:
+    """
+    Simple rule-based NLU for robot commands.
+
+    For production, consider fine-tuned BERT or LLM-based NLU.
+    """
+
+    def __init__(self):
+        self.intent_patterns = {
+            RobotIntent.NAVIGATE: [
+                r"(?:go|move|navigate|head|walk)\s+(?:to|towards?)\s+(?:the\s+)?(.+)",
+                r"(?:take\s+me\s+to|bring\s+me\s+to)\s+(?:the\s+)?(.+)",
+            ],
+            RobotIntent.PICK_UP: [
+                r"(?:pick\s+up|grab|get|take|fetch)\s+(?:the\s+)?(.+)",
+                r"(?:bring\s+me)\s+(?:the\s+)?(.+)",
+            ],
+            RobotIntent.PLACE: [
+                r"(?:put|place|set|drop)\s+(?:it|that|the\s+\w+)\s+(?:on|in|at)\s+(?:the\s+)?(.+)",
+            ],
+            RobotIntent.STOP: [
+                r"\b(?:stop|halt|freeze|cancel|abort)\b",
+            ],
+            RobotIntent.STATUS: [
+                r"(?:what(?:'s|\s+is)\s+your\s+status)",
+                r"(?:where\s+are\s+you)",
+                r"(?:what\s+are\s+you\s+doing)",
+            ],
+            RobotIntent.HELP: [
+                r"\b(?:help|assist|what\s+can\s+you\s+do)\b",
+            ],
+        }
+
+        self.location_aliases = {
+            "kitchen": ["kitchen", "cooking area"],
+            "living_room": ["living room", "lounge", "sitting room"],
+            "bedroom": ["bedroom", "bed room", "sleeping room"],
+            "bathroom": ["bathroom", "restroom", "toilet"],
+            "office": ["office", "study", "work room"],
+        }
+
+    def parse(self, text: str) -> NLUResult:
+        """
+        Parse text into intent and entities.
+
+        Args:
+            text: Transcribed user speech
+
+        Returns:
+            NLUResult with intent, confidence, and entities
+        """
+        text_lower = text.lower().strip()
+        entities = {}
+
+        for intent, patterns in self.intent_patterns.items():
+            for pattern in patterns:
+                match = re.search(pattern, text_lower)
+                if match:
+                    # Extract entities from capture groups
+                    if match.groups():
+                        raw_entity = match.group(1).strip()
+                        entities["target"] = self._resolve_location(raw_entity)
+
+                    return NLUResult(
+                        intent=intent,
+                        confidence=0.9,
+                        entities=entities,
+                        raw_text=text
+                    )
+
+        return NLUResult(
+            intent=RobotIntent.UNKNOWN,
+            confidence=0.0,
+            entities={},
+            raw_text=text
+        )
+
+    def _resolve_location(self, raw: str) -> str:
+        """Resolve location aliases to canonical names."""
+        for canonical, aliases in self.location_aliases.items():
+            if any(alias in raw for alias in aliases):
+                return canonical
+        return raw
+
+
+# Usage example
+nlu = RuleBasedNLU()
+
+result = nlu.parse("Go to the kitchen")
+print(f"Intent: {result.intent.value}")  # navigate
+print(f"Target: {result.entities.get('target')}")  # kitchen
+
+result = nlu.parse("Pick up the red cup")
+print(f"Intent: {result.intent.value}")  # pick_up
+print(f"Target: {result.entities.get('target')}")  # red cup
+```
+
+### LLM-Based NLU
+
+For more flexible understanding, use an LLM:
+
+```python
+from openai import OpenAI
+import json
+
+class LLMBasedNLU:
+    """NLU using LLM for flexible intent understanding."""
+
+    def __init__(self, model: str = "gpt-4o-mini"):
+        self.client = OpenAI()
+        self.model = model
+        self.system_prompt = """You are an NLU system for a home robot. Parse user commands into structured JSON.
+
+Available intents: navigate, pick_up, place, stop, status, help, unknown
+
+Available locations: kitchen, living_room, bedroom, bathroom, office, dining_room, garage
+
+Output format:
+{
+    "intent": "<intent_name>",
+    "confidence": <0.0-1.0>,
+    "entities": {
+        "target": "<location or object>",
+        "destination": "<for place commands>"
+    }
+}
+
+Examples:
+User: "Can you go grab me a drink from the fridge"
+{"intent": "pick_up", "confidence": 0.85, "entities": {"target": "drink", "source": "kitchen"}}
+
+User: "What's your battery level"
+{"intent": "status", "confidence": 0.9, "entities": {}}
+"""
+
+    def parse(self, text: str) -> NLUResult:
+        """Parse user text using LLM."""
+        response = self.client.chat.completions.create(
+            model=self.model,
+            messages=[
+                {"role": "system", "content": self.system_prompt},
+                {"role": "user", "content": text}
+            ],
+            response_format={"type": "json_object"},
+            temperature=0.0
+        )
+
+        result = json.loads(response.choices[0].message.content)
+
+        return NLUResult(
+            intent=RobotIntent(result.get("intent", "unknown")),
+            confidence=result.get("confidence", 0.5),
+            entities=result.get("entities", {}),
+            raw_text=text
+        )
+```
 
 ---
 
 ## Dialogue Management
 
-[Placeholder: Dialogue management content - 500-800 tokens]
+Dialogue management maintains conversation state and determines appropriate robot responses.
+
+### Dialogue State Machine
+
+```python
+from enum import Enum, auto
+from dataclasses import dataclass, field
+from typing import Optional, List, Callable
+import time
+
+class DialogueState(Enum):
+    """States in the dialogue state machine."""
+    IDLE = auto()
+    LISTENING = auto()
+    PROCESSING = auto()
+    CONFIRMING = auto()
+    EXECUTING = auto()
+    ERROR_RECOVERY = auto()
+
+
+@dataclass
+class ConversationContext:
+    """Maintains dialogue history and context."""
+    current_state: DialogueState = DialogueState.IDLE
+    pending_intent: Optional[NLUResult] = None
+    confirmation_attempts: int = 0
+    last_interaction_time: float = 0.0
+    history: List[dict] = field(default_factory=list)
+
+    def add_turn(self, role: str, content: str):
+        self.history.append({
+            "role": role,
+            "content": content,
+            "timestamp": time.time()
+        })
+        self.last_interaction_time = time.time()
+
+
+class DialogueManager:
+    """
+    Manages conversation flow with the robot.
+
+    Handles confirmations, clarifications, and error recovery.
+    """
+
+    def __init__(
+        self,
+        nlu: RuleBasedNLU,
+        action_executor: Callable,
+        tts_callback: Callable
+    ):
+        self.nlu = nlu
+        self.execute_action = action_executor
+        self.speak = tts_callback
+        self.context = ConversationContext()
+        self.confirmation_threshold = 0.7
+        self.max_confirmation_attempts = 2
+
+    def process_utterance(self, text: str) -> str:
+        """
+        Process user utterance and return robot response.
+
+        Args:
+            text: Transcribed user speech
+
+        Returns:
+            Robot's verbal response
+        """
+        self.context.add_turn("user", text)
+
+        # Handle based on current state
+        if self.context.current_state == DialogueState.CONFIRMING:
+            return self._handle_confirmation(text)
+
+        # Parse new intent
+        nlu_result = self.nlu.parse(text)
+
+        if nlu_result.intent == RobotIntent.UNKNOWN:
+            response = "I didn't understand that. Could you rephrase?"
+            self.speak(response)
+            return response
+
+        if nlu_result.intent == RobotIntent.STOP:
+            self.execute_action("stop", {})
+            response = "Stopping."
+            self.context.current_state = DialogueState.IDLE
+            self.speak(response)
+            return response
+
+        if nlu_result.intent == RobotIntent.HELP:
+            response = self._generate_help_response()
+            self.speak(response)
+            return response
+
+        # Low confidence - ask for confirmation
+        if nlu_result.confidence < self.confirmation_threshold:
+            return self._request_confirmation(nlu_result)
+
+        # High confidence - execute directly
+        return self._execute_intent(nlu_result)
+
+    def _request_confirmation(self, nlu_result: NLUResult) -> str:
+        """Ask user to confirm understood intent."""
+        self.context.pending_intent = nlu_result
+        self.context.current_state = DialogueState.CONFIRMING
+        self.context.confirmation_attempts = 0
+
+        if nlu_result.intent == RobotIntent.NAVIGATE:
+            target = nlu_result.entities.get("target", "there")
+            response = f"Did you want me to go to the {target}?"
+        elif nlu_result.intent == RobotIntent.PICK_UP:
+            target = nlu_result.entities.get("target", "that")
+            response = f"Should I pick up the {target}?"
+        else:
+            response = f"Did you mean {nlu_result.intent.value}?"
+
+        self.speak(response)
+        return response
+
+    def _handle_confirmation(self, text: str) -> str:
+        """Handle user response to confirmation request."""
+        text_lower = text.lower()
+
+        # Check for affirmative
+        if any(word in text_lower for word in ["yes", "yeah", "correct", "right", "affirmative", "do it"]):
+            return self._execute_intent(self.context.pending_intent)
+
+        # Check for negative
+        if any(word in text_lower for word in ["no", "nope", "wrong", "cancel", "never mind"]):
+            self.context.current_state = DialogueState.IDLE
+            self.context.pending_intent = None
+            response = "Okay, cancelled. What would you like me to do?"
+            self.speak(response)
+            return response
+
+        # Unclear response
+        self.context.confirmation_attempts += 1
+        if self.context.confirmation_attempts >= self.max_confirmation_attempts:
+            self.context.current_state = DialogueState.IDLE
+            response = "I'll cancel that. Please try again with a clearer command."
+            self.speak(response)
+            return response
+
+        response = "Sorry, I need a yes or no. Should I proceed?"
+        self.speak(response)
+        return response
+
+    def _execute_intent(self, nlu_result: NLUResult) -> str:
+        """Execute the parsed intent."""
+        self.context.current_state = DialogueState.EXECUTING
+
+        intent = nlu_result.intent
+        entities = nlu_result.entities
+
+        if intent == RobotIntent.NAVIGATE:
+            target = entities.get("target", "unknown")
+            success = self.execute_action("navigate", {"goal": target})
+            if success:
+                response = f"Navigating to the {target}."
+            else:
+                response = f"I can't navigate to {target}. Is it a known location?"
+
+        elif intent == RobotIntent.PICK_UP:
+            target = entities.get("target", "object")
+            success = self.execute_action("pick_up", {"object": target})
+            if success:
+                response = f"Picking up the {target}."
+            else:
+                response = f"I couldn't find the {target}."
+
+        elif intent == RobotIntent.STATUS:
+            status = self.execute_action("get_status", {})
+            response = f"I'm currently at the {status.get('location', 'unknown')}. Battery is at {status.get('battery', 'unknown')} percent."
+
+        else:
+            response = "I'll try to do that."
+            self.execute_action(intent.value, entities)
+
+        self.context.current_state = DialogueState.IDLE
+        self.context.pending_intent = None
+        self.speak(response)
+        return response
+
+    def _generate_help_response(self) -> str:
+        """Generate help message listing capabilities."""
+        return (
+            "I can navigate to rooms, pick up objects, and tell you my status. "
+            "For example, say 'go to the kitchen' or 'pick up the red cup'."
+        )
+```
+
+<CollapsibleSection title="Multi-Turn Dialogue Patterns">
+
+Effective robot dialogue handles these patterns:
+
+1. **Clarification requests**: "The red cup or the blue cup?"
+2. **Implicit confirmation**: "Navigating to kitchen" (no explicit yes/no)
+3. **Error recovery**: "I couldn't reach there. Should I try another path?"
+4. **Context carryover**: "Put it on the table" (referencing previous object)
+5. **Interruption handling**: "Stop! Actually, go to the bedroom instead"
+
+Design your dialogue manager to handle graceful degradation when intent is unclear.
+
+</CollapsibleSection>
 
 ---
 
 ## TTS (Text-to-Speech)
 
-[Placeholder: Piper/Coqui TTS content - 500-800 tokens]
+### Piper TTS
+
+Piper is a fast, lightweight neural TTS suitable for robotics:
+
+```python
+import subprocess
+import wave
+import numpy as np
+from pathlib import Path
+import sounddevice as sd
+
+class PiperTTS:
+    """Text-to-speech using Piper neural TTS."""
+
+    def __init__(
+        self,
+        model_path: str = "en_US-lessac-medium.onnx",
+        config_path: str = "en_US-lessac-medium.onnx.json"
+    ):
+        """
+        Args:
+            model_path: Path to Piper ONNX model
+            config_path: Path to model config JSON
+        """
+        self.model_path = Path(model_path)
+        self.config_path = Path(config_path)
+        self.sample_rate = 22050
+
+    def synthesize(self, text: str) -> np.ndarray:
+        """
+        Synthesize speech from text.
+
+        Args:
+            text: Text to speak
+
+        Returns:
+            Audio waveform as numpy array
+        """
+        # Use piper CLI
+        result = subprocess.run(
+            [
+                "piper",
+                "--model", str(self.model_path),
+                "--config", str(self.config_path),
+                "--output_raw"
+            ],
+            input=text.encode(),
+            capture_output=True
+        )
+
+        if result.returncode != 0:
+            raise RuntimeError(f"Piper failed: {result.stderr.decode()}")
+
+        # Convert raw audio to numpy
+        audio = np.frombuffer(result.stdout, dtype=np.int16)
+        audio = audio.astype(np.float32) / 32768.0
+
+        return audio
+
+    def speak(self, text: str):
+        """Synthesize and play speech."""
+        audio = self.synthesize(text)
+        sd.play(audio, self.sample_rate)
+        sd.wait()
+
+    def speak_async(self, text: str):
+        """Synthesize and play speech without blocking."""
+        audio = self.synthesize(text)
+        sd.play(audio, self.sample_rate)
+
+
+# Alternative: Using Coqui TTS
+class CoquiTTS:
+    """Text-to-speech using Coqui TTS."""
+
+    def __init__(self, model_name: str = "tts_models/en/ljspeech/tacotron2-DDC"):
+        from TTS.api import TTS
+        self.tts = TTS(model_name)
+        self.sample_rate = 22050
+
+    def synthesize(self, text: str) -> np.ndarray:
+        """Synthesize speech from text."""
+        wav = self.tts.tts(text)
+        return np.array(wav, dtype=np.float32)
+
+    def speak(self, text: str):
+        """Synthesize and play speech."""
+        audio = self.synthesize(text)
+        sd.play(audio, self.sample_rate)
+        sd.wait()
+```
+
+### Expressive TTS
+
+Add emotion and emphasis for more natural robot speech:
+
+```python
+class ExpressiveTTS:
+    """TTS with prosody control for expressive speech."""
+
+    def __init__(self, base_tts):
+        self.tts = base_tts
+
+    def speak_with_emotion(self, text: str, emotion: str = "neutral"):
+        """
+        Speak with emotional inflection.
+
+        Uses SSML-style markers for prosody control.
+        """
+        prosody_map = {
+            "happy": {"rate": 1.1, "pitch": "+10%"},
+            "sad": {"rate": 0.9, "pitch": "-10%"},
+            "urgent": {"rate": 1.3, "pitch": "+5%"},
+            "calm": {"rate": 0.95, "pitch": "-5%"},
+            "neutral": {"rate": 1.0, "pitch": "0%"}
+        }
+
+        settings = prosody_map.get(emotion, prosody_map["neutral"])
+
+        # For Piper, add SSML or model-specific controls
+        # This is a simplified example
+        self.tts.speak(text)
+
+    def acknowledge(self):
+        """Quick acknowledgment sound."""
+        self.tts.speak("Okay.")
+
+    def error(self, message: str):
+        """Speak error with appropriate tone."""
+        self.speak_with_emotion(f"Sorry. {message}", "sad")
+
+    def success(self, message: str):
+        """Speak success with appropriate tone."""
+        self.speak_with_emotion(message, "happy")
+```
 
 ---
 
 ## Practical Implementation
 
-### Code Example: ROS 2 Voice Interface
+### Complete ROS 2 Voice Interface
 
 ```python
 #!/usr/bin/env python3
 """
-Placeholder: Voice interface example
+Complete conversational robotics node for ROS 2.
+
+Integrates ASR, NLU, Dialogue Management, and TTS.
 """
 
 import rclpy
 from rclpy.node import Node
+from std_msgs.msg import String
+from geometry_msgs.msg import PoseStamped
+from std_srvs.srv import Trigger
 
-# Placeholder implementation
+import numpy as np
+import sounddevice as sd
+import threading
+from queue import Queue
+from typing import Optional
+
+import whisper
+
+
+class ConversationalRobotNode(Node):
+    """ROS 2 node for voice-controlled robot interaction."""
+
+    def __init__(self):
+        super().__init__('conversational_robot')
+
+        # Parameters
+        self.declare_parameter('whisper_model', 'small')
+        self.declare_parameter('sample_rate', 16000)
+        self.declare_parameter('wake_word', 'hey robot')
+
+        model_size = self.get_parameter('whisper_model').value
+        self.sample_rate = self.get_parameter('sample_rate').value
+        self.wake_word = self.get_parameter('wake_word').value
+
+        # Initialize ASR
+        self.get_logger().info(f'Loading Whisper {model_size} model...')
+        self.asr_model = whisper.load_model(model_size)
+        self.get_logger().info('ASR model loaded')
+
+        # Initialize NLU
+        self.nlu = RuleBasedNLU()
+
+        # Initialize TTS (placeholder - replace with actual TTS)
+        self.tts = None  # PiperTTS() when available
+
+        # Audio state
+        self.audio_queue = Queue()
+        self.is_listening = False
+        self.wake_word_detected = False
+
+        # ROS interfaces
+        self.transcript_pub = self.create_publisher(String, '/speech/transcript', 10)
+        self.intent_pub = self.create_publisher(String, '/speech/intent', 10)
+        self.response_pub = self.create_publisher(String, '/speech/response', 10)
+
+        # Navigation client
+        self.nav_goal_pub = self.create_publisher(PoseStamped, '/goal_pose', 10)
+
+        # Dialogue context
+        self.dialogue_context = ConversationContext()
+
+        # Start audio capture thread
+        self.running = True
+        self.audio_thread = threading.Thread(target=self._audio_capture_loop)
+        self.audio_thread.start()
+
+        # Processing timer (10 Hz)
+        self.process_timer = self.create_timer(0.1, self._process_audio)
+
+        self.get_logger().info('Conversational robot node ready')
+        self._speak("Hello! I'm ready for commands.")
+
+    def _audio_capture_loop(self):
+        """Continuously capture audio."""
+        def callback(indata, frames, time, status):
+            if status:
+                self.get_logger().warn(f'Audio status: {status}')
+            self.audio_queue.put(indata.copy())
+
+        with sd.InputStream(
+            samplerate=self.sample_rate,
+            channels=1,
+            dtype=np.float32,
+            callback=callback,
+            blocksize=int(self.sample_rate * 0.5)
+        ):
+            while self.running:
+                sd.sleep(100)
+
+    def _process_audio(self):
+        """Process accumulated audio for speech."""
+        if self.audio_queue.empty():
+            return
+
+        # Accumulate audio chunks
+        chunks = []
+        while not self.audio_queue.empty():
+            chunks.append(self.audio_queue.get())
+
+        if not chunks:
+            return
+
+        audio = np.concatenate(chunks).flatten()
+
+        # Check for speech activity (simple energy-based VAD)
+        energy = np.sqrt(np.mean(audio ** 2))
+        if energy < 0.01:  # Silence threshold
+            return
+
+        # Transcribe
+        try:
+            result = self.asr_model.transcribe(
+                audio,
+                language="en",
+                fp16=False  # Use FP32 for CPU
+            )
+            text = result["text"].strip()
+
+            if not text:
+                return
+
+            self.get_logger().info(f'Transcribed: "{text}"')
+
+            # Publish transcript
+            transcript_msg = String()
+            transcript_msg.data = text
+            self.transcript_pub.publish(transcript_msg)
+
+            # Check for wake word if not already listening
+            if not self.wake_word_detected:
+                if self.wake_word.lower() in text.lower():
+                    self.wake_word_detected = True
+                    self._speak("Yes?")
+                return
+
+            # Process command
+            response = self._handle_command(text)
+
+            # Reset after command
+            self.wake_word_detected = False
+
+        except Exception as e:
+            self.get_logger().error(f'Transcription error: {e}')
+
+    def _handle_command(self, text: str) -> str:
+        """Process recognized command."""
+        # Parse intent
+        nlu_result = self.nlu.parse(text)
+
+        # Publish intent
+        intent_msg = String()
+        intent_msg.data = f"{nlu_result.intent.value}:{nlu_result.entities}"
+        self.intent_pub.publish(intent_msg)
+
+        # Execute based on intent
+        if nlu_result.intent == RobotIntent.NAVIGATE:
+            target = nlu_result.entities.get("target", "")
+            response = self._navigate_to(target)
+        elif nlu_result.intent == RobotIntent.STOP:
+            response = "Stopping."
+            # Publish zero velocity or cancel goal
+        elif nlu_result.intent == RobotIntent.STATUS:
+            response = "I'm operational and ready for commands."
+        elif nlu_result.intent == RobotIntent.HELP:
+            response = "I can navigate to locations. Say 'go to' followed by a room name."
+        else:
+            response = "I didn't understand that command."
+
+        # Publish and speak response
+        response_msg = String()
+        response_msg.data = response
+        self.response_pub.publish(response_msg)
+        self._speak(response)
+
+        return response
+
+    def _navigate_to(self, location: str) -> str:
+        """Send navigation goal."""
+        # Location to coordinates mapping (simplified)
+        location_coords = {
+            "kitchen": (5.0, 3.0),
+            "living_room": (0.0, 0.0),
+            "bedroom": (-3.0, 4.0),
+        }
+
+        coords = location_coords.get(location.lower())
+        if not coords:
+            return f"I don't know where {location} is."
+
+        goal = PoseStamped()
+        goal.header.frame_id = "map"
+        goal.header.stamp = self.get_clock().now().to_msg()
+        goal.pose.position.x = coords[0]
+        goal.pose.position.y = coords[1]
+        goal.pose.orientation.w = 1.0
+
+        self.nav_goal_pub.publish(goal)
+
+        return f"Navigating to the {location}."
+
+    def _speak(self, text: str):
+        """Speak response (placeholder for TTS)."""
+        self.get_logger().info(f'Speaking: "{text}"')
+        if self.tts:
+            self.tts.speak(text)
+        # Fallback: just log
+
+    def destroy_node(self):
+        """Clean shutdown."""
+        self.running = False
+        self.audio_thread.join()
+        super().destroy_node()
+
 
 def main(args=None):
     rclpy.init(args=args)
-    # Placeholder
-    rclpy.shutdown()
+    node = ConversationalRobotNode()
+
+    try:
+        rclpy.spin(node)
+    except KeyboardInterrupt:
+        pass
+    finally:
+        node.destroy_node()
+        rclpy.shutdown()
+
 
 if __name__ == '__main__':
     main()
@@ -87,27 +1070,190 @@ if __name__ == '__main__':
 
 ## Common Failure Modes
 
-[Placeholder: Noise, latency, intent errors]
+### 1. Background Noise Interference
+
+**Symptoms**: High word error rate, false activations, missed commands.
+
+**Diagnosis**:
+```python
+def analyze_audio_quality(audio: np.ndarray, sample_rate: int = 16000) -> dict:
+    """Analyze audio quality metrics."""
+    # Signal-to-noise ratio estimation
+    signal_power = np.mean(audio ** 2)
+
+    # Estimate noise from quiet periods
+    frame_size = int(sample_rate * 0.02)  # 20ms frames
+    frames = audio.reshape(-1, frame_size)
+    frame_energies = np.mean(frames ** 2, axis=1)
+    noise_power = np.percentile(frame_energies, 10)  # Bottom 10%
+
+    snr_db = 10 * np.log10(signal_power / (noise_power + 1e-10))
+
+    return {
+        "snr_db": snr_db,
+        "signal_power": signal_power,
+        "noise_power": noise_power,
+        "usable": snr_db > 10
+    }
+```
+
+**Resolution**:
+- Use beamforming with microphone array
+- Apply noise suppression preprocessing
+- Increase VAD threshold in noisy environments
+- Use larger Whisper model for noise robustness
+
+### 2. Wake Word False Positives
+
+**Symptoms**: Robot responds to conversations not directed at it.
+
+**Resolution**:
+- Use dedicated wake word detector (Picovoice Porcupine, Snowboy)
+- Require confirmation for high-impact commands
+- Add speaker verification (recognize authorized users)
+
+### 3. ASR Latency
+
+**Symptoms**: Delayed responses, conversation feels unnatural.
+
+**Diagnosis**:
+```python
+import time
+
+def measure_asr_latency(model, audio):
+    """Measure end-to-end ASR latency."""
+    start = time.perf_counter()
+    result = model.transcribe(audio)
+    elapsed = time.perf_counter() - start
+
+    audio_duration = len(audio) / 16000
+
+    return {
+        "processing_time_ms": elapsed * 1000,
+        "audio_duration_ms": audio_duration * 1000,
+        "real_time_factor": elapsed / audio_duration
+    }
+```
+
+**Resolution**:
+- Use `faster-whisper` with CTranslate2
+- Use smaller model (tiny/base) for initial detection
+- Implement streaming transcription
+- Process shorter audio chunks
+
+### 4. Intent Misclassification
+
+**Symptoms**: Robot performs wrong action, frequent "I don't understand" responses.
+
+**Resolution**:
+- Add confirmation for ambiguous commands
+- Expand NLU training data with domain-specific examples
+- Use LLM-based NLU for better generalization
+- Log failures and continuously improve patterns
+
+### 5. TTS Quality Issues
+
+**Symptoms**: Robotic voice, pronunciation errors, unnatural rhythm.
+
+**Resolution**:
+- Use neural TTS (Piper, Coqui, Amazon Polly)
+- Add SSML markup for proper pronunciation
+- Test and adjust speaking rate
+- Pre-generate common phrases for consistency
 
 ---
 
 ## Hardware and Compute Requirements
 
-| Requirement | Minimum | Recommended |
-|-------------|---------|-------------|
-| Operating System | Ubuntu 22.04 LTS | Ubuntu 22.04 LTS |
-| RAM | 8 GB | 16 GB |
-| Microphone | USB microphone | Array microphone |
-| Speakers | Basic speakers | Quality speakers |
+| Requirement | Minimum | Recommended | Production |
+|-------------|---------|-------------|------------|
+| Operating System | Ubuntu 22.04 LTS | Ubuntu 22.04 LTS | Ubuntu 22.04 LTS |
+| CPU | 4 cores | 8+ cores | 8+ cores |
+| RAM | 8 GB | 16 GB | 16 GB |
+| GPU | Optional | GTX 1060 | RTX 3060+ |
+| Microphone | USB microphone | Array microphone | ReSpeaker/Matrix |
+| Speakers | Basic | Quality speakers | Amplified speakers |
+
+**Audio Hardware Recommendations**:
+- **ReSpeaker Mic Array v2.0**: 4-mic circular array with beamforming
+- **Matrix Voice**: 8-mic array with DSP
+- **PlayStation Eye**: Budget option (4 mics)
+
+**For GPU-Accelerated ASR**:
+- Whisper `turbo` on RTX 3060: ~10x real-time
+- Whisper `small` on RTX 3060: ~30x real-time
+- CPU inference is viable for `tiny`/`base` models
 
 ---
 
 ## Summary
 
-[Placeholder: Chapter summary]
+This chapter covered the complete conversational robotics pipeline:
+
+- **ASR**: Whisper-based speech recognition with real-time streaming
+- **VAD**: Voice activity detection to reduce computation
+- **NLU**: Intent classification and entity extraction
+- **Dialogue Management**: State machines for multi-turn conversations
+- **TTS**: Neural text-to-speech with Piper
+- **Failure Modes**: Noise, latency, misclassification, and solutions
+
+The key insight is that conversational interfaces must be **robust to failure**—users will rephrase, the environment will be noisy, and the robot should gracefully handle misunderstandings.
+
+---
+
+## Knowledge Check
+
+<Quiz
+  questions={[
+    {
+      question: "What is the primary purpose of Voice Activity Detection (VAD) in a conversational robot?",
+      options: [
+        "To improve speech recognition accuracy",
+        "To reduce computational load by filtering out silence",
+        "To identify different speakers",
+        "To add emotion to robot speech"
+      ],
+      correctIndex: 1,
+      explanation: "VAD detects speech segments and filters out silence, reducing the amount of audio that needs to be processed by the computationally expensive ASR model. This improves responsiveness and reduces power consumption."
+    },
+    {
+      question: "Why might a robot ask for confirmation before executing a command?",
+      options: [
+        "To annoy the user",
+        "Because the microphone is broken",
+        "When intent classification confidence is low, to prevent wrong actions",
+        "Confirmation is always required"
+      ],
+      correctIndex: 2,
+      explanation: "When the NLU system has low confidence in its intent classification (e.g., due to ambiguous phrasing or background noise), asking for confirmation prevents the robot from taking incorrect actions that might be difficult to reverse."
+    },
+    {
+      question: "What is the advantage of using 'faster-whisper' over the original Whisper implementation?",
+      options: [
+        "Better accuracy",
+        "Up to 4x faster inference with lower memory usage",
+        "More supported languages",
+        "Easier installation"
+      ],
+      correctIndex: 1,
+      explanation: "faster-whisper uses CTranslate2 for optimized inference, achieving up to 4x speedup with significantly lower memory usage through quantization. This is critical for real-time robotics applications where latency matters."
+    },
+    {
+      question: "If a conversational robot frequently misunderstands commands in a factory environment, what should you investigate first?",
+      options: [
+        "Replace the Whisper model with a larger one",
+        "Measure signal-to-noise ratio and consider beamforming or noise suppression",
+        "Increase the TTS volume",
+        "Reduce the robot's vocabulary"
+      ],
+      correctIndex: 1,
+      explanation: "Factory environments are typically noisy. Before changing the ASR model, measure the audio quality (SNR). If SNR is low, add noise suppression preprocessing or use a beamforming microphone array to focus on the speaker's direction."
+    }
+  ]}
+/>
 
 ---
 
 ## Next Chapter Preview
 
-In the next chapter, **Capstone: Autonomous Humanoid Agent**, you will integrate all concepts.
+In the final chapter, **Capstone: Autonomous Humanoid Agent**, you will integrate all concepts from this textbook—Physical AI, ROS 2, simulation, VLA, locomotion, and conversation—to build a complete autonomous humanoid robot system.
