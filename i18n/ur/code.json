@@ -1,0 +1,54 @@
+{
+  "theme.common.skipToMainContent": {
+    "message": "مرکزی مواد پر جائیں",
+    "description": "The skip to main content button label"
+  },
+  "theme.docs.sidebar.collapseButtonTitle": {
+    "message": "سائیڈبار کو چھوٹا کریں",
+    "description": "The collapse sidebar button label"
+  },
+  "theme.docs.sidebar.expandButtonTitle": {
+    "message": "سائیڈبار کو پھیلائیں",
+    "description": "The expand sidebar button label"
+  },
+  "theme.colorToggle.ariaLabel": {
+    "message": "ڈارک اور لائٹ موڈ کے درمیان تبدیل کریں",
+    "description": "The ARIA label for the color mode toggle"
+  },
+  "theme.navbar.mobileLanguageDropdown.label": {
+    "message": "زبانیں",
+    "description": "The label for the mobile language dropdown"
+  },
+  "theme.NotFound.title": {
+    "message": "صفحہ نہیں ملا",
+    "description": "The title of the 404 page"
+  },
+  "theme.NotFound.p1": {
+    "message": "ہمیں وہ نہیں مل سکا جو آپ ڈھونڈ رہے تھے۔",
+    "description": "The first paragraph of the 404 page"
+  },
+  "theme.NotFound.p2": {
+    "message": "براہ کرم اس صفحے سے لنک کرنے والی سائٹ کے مالک سے رابطہ کریں اور انہیں بتائیں کہ ان کا لنک ٹوٹا ہوا ہے۔",
+    "description": "The second paragraph of the 404 page"
+  },
+  "theme.AnnouncementBar.closeButtonAriaLabel": {
+    "message": "بند کریں",
+    "description": "The ARIA label for the announcement bar close button"
+  },
+  "theme.TOCCollapsible.toggleButtonLabel": {
+    "message": "اس صفحے پر",
+    "description": "The label used by the button on the table of contents"
+  },
+  "theme.docs.tagDocListPageTitle.nDocsTagged": {
+    "message": "{count} دستاویزات ٹیگ کی گئیں",
+    "description": "Plural form for number of docs tagged"
+  },
+  "theme.docs.tagDocListPageTitle": {
+    "message": "\"{tagName}\" کے ساتھ ٹیگ کردہ دستاویزات",
+    "description": "The title of the page listing docs tagged with a tag"
+  },
+  "theme.SearchBar.label": {
+    "message": "تلاش کریں",
+    "description": "The search bar label"
+  }
+}
