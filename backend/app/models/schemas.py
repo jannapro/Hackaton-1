@@ -1,6 +1,12 @@
 """Pydantic schemas for API request/response models."""
 
+from typing import Literal
+
 from pydantic import BaseModel, Field
+
+
+# Supported languages for the chatbot
+Language = Literal["en", "ur"]
 
 
 class ChatRequest(BaseModel):
@@ -20,6 +26,10 @@ class ChatRequest(BaseModel):
     conversation_id: str | None = Field(
         default=None,
         description="Optional conversation ID for continuity",
+    )
+    language: Language = Field(
+        default="en",
+        description="Language for the response (en=English, ur=Urdu)",
     )
 
 

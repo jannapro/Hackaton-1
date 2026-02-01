@@ -45,6 +45,7 @@ async def chat(request: ChatRequest) -> ChatResponse:
             query=request.query,
             selected_text=request.selected_text,
             conversation_id=request.conversation_id,
+            language=request.language,
         )
 
         return response

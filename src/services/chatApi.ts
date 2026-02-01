@@ -1,11 +1,15 @@
 /**
  * API client for the RAG chatbot backend.
+ * Supports multilingual responses (English/Urdu).
  */
+
+export type Language = 'en' | 'ur';
 
 export interface ChatRequest {
   query: string;
   selected_text?: string | null;
   conversation_id?: string | null;
+  language?: Language;
 }
 
 export interface SourceReference {

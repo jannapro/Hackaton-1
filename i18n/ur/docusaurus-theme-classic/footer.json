@@ -1,0 +1,46 @@
+{
+  "link.title.Textbook": {
+    "message": "کتاب",
+    "description": "The title of the footer links column with title=Textbook"
+  },
+  "link.title.Resources": {
+    "message": "وسائل",
+    "description": "The title of the footer links column with title=Resources"
+  },
+  "link.title.Community": {
+    "message": "کمیونٹی",
+    "description": "The title of the footer links column with title=Community"
+  },
+  "link.item.label.Introduction": {
+    "message": "تعارف",
+    "description": "Footer link with label Introduction"
+  },
+  "link.item.label.Physical AI Foundations": {
+    "message": "فزیکل AI کی بنیادیں",
+    "description": "Footer link with label Physical AI Foundations"
+  },
+  "link.item.label.ROS 2": {
+    "message": "ROS 2",
+    "description": "Footer link with label ROS 2"
+  },
+  "link.item.label.ROS 2 Documentation": {
+    "message": "ROS 2 دستاویزات",
+    "description": "Footer link with label ROS 2 Documentation"
+  },
+  "link.item.label.Gazebo Sim": {
+    "message": "گیزیبو سم",
+    "description": "Footer link with label Gazebo Sim"
+  },
+  "link.item.label.NVIDIA Isaac Sim": {
+    "message": "NVIDIA آئزک سم",
+    "description": "Footer link with label NVIDIA Isaac Sim"
+  },
+  "link.item.label.GitHub": {
+    "message": "گٹ ہب",
+    "description": "Footer link with label GitHub"
+  },
+  "copyright": {
+    "message": "کاپی رائٹ ${year} فزیکل ہیومنائیڈ روبوٹس کتاب۔ Docusaurus کے ساتھ بنایا گیا۔",
+    "description": "The footer copyright"
+  }
+}

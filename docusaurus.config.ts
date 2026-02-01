@@ -28,10 +28,22 @@ const config: Config = {
   onBrokenLinks: 'throw',
   onBrokenMarkdownLinks: 'warn',
 
-  // i18n config - supports future multilingual transformation (Urdu per constitution)
+  // i18n config - multilingual support (English default, Urdu)
   i18n: {
     defaultLocale: 'en',
-    locales: ['en'],
+    locales: ['en', 'ur'],
+    localeConfigs: {
+      en: {
+        label: 'English',
+        direction: 'ltr',
+        htmlLang: 'en-US',
+      },
+      ur: {
+        label: 'اردو',
+        direction: 'rtl',
+        htmlLang: 'ur-PK',
+      },
+    },
   },
 
   // Custom fields for RAG Chatbot configuration
@@ -85,6 +97,10 @@ const config: Config = {
           sidebarId: 'textbookSidebar',
           position: 'left',
           label: 'Textbook',
+        },
+        {
+          type: 'localeDropdown',
+          position: 'right',
         },
         {
           href: 'https://github.com/jannapro/physical-humanoid-robots-textbook',

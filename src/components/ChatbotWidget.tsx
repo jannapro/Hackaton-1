@@ -7,11 +7,13 @@
  * - Expandable chat panel
  * - Text selection context integration
  * - Source citations with chapter/section references
+ * - Multilingual support (English/Urdu)
  */
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { sendChatMessage, ChatResponse, SourceReference } from '../services/chatApi';
 import { useTextSelection } from '../hooks/useTextSelection';
+import { useLanguage } from '../contexts/LanguageContext';
 
 interface Message {
   id: string;
@@ -235,6 +237,7 @@ export default function ChatbotWidget(): JSX.Element {
   const chatPanelRef = useRef<HTMLDivElement>(null);
 
   const { selection, clearSelection, hasSelection } = useTextSelection();
+  const { language, isRTL, labels } = useLanguage();
 
   // Trap focus within chat panel when open (T217.1 Accessibility)
   useEffect(() => {
@@ -282,6 +285,7 @@ export default function ChatbotWidget(): JSX.Element {
         query: input,
         selected_text: hasSelection ? selection?.text : null,
         conversation_id: conversationId,
+        language: language,
       });
 
       const assistantMessage: Message = {
@@ -334,11 +338,15 @@ export default function ChatbotWidget(): JSX.Element {
       {isOpen && (
         <div
           ref={chatPanelRef}
-          style={styles.chatPanel}
+          style={{
+            ...styles.chatPanel,
+            direction: isRTL ? 'rtl' : 'ltr',
+          }}
           role="dialog"
           aria-modal="true"
           aria-labelledby="chatbot-title"
           aria-describedby="chatbot-description"
+          dir={isRTL ? 'rtl' : 'ltr'}
         >
           {/* Screen reader description */}
           <span id="chatbot-description" className="sr-only" style={{ position: 'absolute', width: '1px', height: '1px', overflow: 'hidden', clip: 'rect(0, 0, 0, 0)' }}>
@@ -347,7 +355,7 @@ export default function ChatbotWidget(): JSX.Element {
 
           {/* Header */}
           <div style={styles.header}>
-            <h4 id="chatbot-title" style={styles.headerTitle}>Textbook Assistant</h4>
+            <h4 id="chatbot-title" style={styles.headerTitle}>{labels.chatTitle}</h4>
             <button
               style={styles.closeButton}
               onClick={toggleChat}
@@ -361,10 +369,10 @@ export default function ChatbotWidget(): JSX.Element {
           {hasSelection && (
             <div style={styles.selectionBanner}>
               <span style={styles.selectionText}>
-                Context: "{selection?.text.substring(0, 50)}..."
+                {isRTL ? 'سیاق و سباق' : 'Context'}: "{selection?.text.substring(0, 50)}..."
               </span>
               <button style={styles.clearButton} onClick={clearSelection}>
-                Clear
+                {labels.clearChat}
               </button>
             </div>
           )}
@@ -378,9 +386,11 @@ export default function ChatbotWidget(): JSX.Element {
           >
             {messages.length === 0 ? (
               <div style={styles.welcomeMessage}>
-                <p>Ask me anything about the Physical AI textbook!</p>
+                <p>{labels.greeting}</p>
                 <p style={{ fontSize: '12px', marginTop: '8px' }}>
-                  Tip: Select text in the book to ask questions about specific content.
+                  {isRTL
+                    ? 'ٹپ: مخصوص مواد کے بارے میں سوالات پوچھنے کے لیے کتاب میں متن منتخب کریں۔'
+                    : 'Tip: Select text in the book to ask questions about specific content.'}
                 </p>
               </div>
             ) : (
@@ -401,7 +411,7 @@ export default function ChatbotWidget(): JSX.Element {
                     message.sources &&
                     message.sources.length > 0 && (
                       <div style={styles.sources}>
-                        <div style={{ marginBottom: '4px' }}>Sources:</div>
+                        <div style={{ marginBottom: '4px' }}>{isRTL ? 'ذرائع:' : 'Sources:'}</div>
                         {message.sources.map((source) => (
                           <span key={source.chunk_id} style={styles.sourceTag}>
                             [{source.chapter}: {source.section}]
@@ -428,7 +438,7 @@ export default function ChatbotWidget(): JSX.Element {
                   borderColor: 'rgba(255, 82, 82, 0.3)',
                 }}
               >
-                Error: {error}
+                {labels.error}: {error}
               </div>
             )}
 
@@ -443,9 +453,13 @@ export default function ChatbotWidget(): JSX.Element {
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyPress={handleKeyPress}
-              placeholder="Ask about the textbook..."
-              style={styles.input}
+              placeholder={labels.chatPlaceholder}
+              style={{
+                ...styles.input,
+                textAlign: isRTL ? 'right' : 'left',
+              }}
               disabled={isLoading}
+              dir={isRTL ? 'rtl' : 'ltr'}
             />
             <button
               onClick={handleSend}
@@ -456,7 +470,7 @@ export default function ChatbotWidget(): JSX.Element {
               }}
               disabled={isLoading || !input.trim()}
             >
-              Send
+              {labels.sendButton}
             </button>
           </div>
         </div>
