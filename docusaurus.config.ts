@@ -99,10 +99,6 @@ const config: Config = {
           label: 'Textbook',
         },
         {
-          type: 'custom-languageSwitcher',
-          position: 'right',
-        },
-        {
           href: 'https://github.com/jannapro/physical-humanoid-robots-textbook',
           label: 'GitHub',
           position: 'right',
