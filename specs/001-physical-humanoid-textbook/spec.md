@@ -2,8 +2,8 @@
 
 **Feature Branch**: `001-physical-humanoid-textbook`
 **Created**: 2026-01-21
-**Status**: Draft
-**Input**: AI-native technical textbook for Physical AI and Humanoid Robotics with 8 chapters
+**Status**: Draft (Expanded with RAG)
+**Input**: AI-native technical textbook for Physical AI and Humanoid Robotics with 8 chapters and Integrated RAG Chatbot
 
 ## Clarifications
 
@@ -203,3 +203,332 @@ A learner wants to integrate all previous chapters into a complete autonomous hu
 - GPU-dependent content (Isaac Sim) clearly documents NVIDIA GPU requirements and provides degradation paths for CPU-only users.
 - Panaversity curriculum requirements align with the 8-chapter structure defined in the constitution.
 - Docusaurus is pre-configured for the deployment target; content creation does not include Docusaurus setup.
+
+---
+
+## Feature Overview: Integrated RAG Chatbot
+
+The textbook includes an Integrated Retrieval-Augmented Generation (RAG) Chatbot as a first-class feature. This chatbot is embedded directly in the Docusaurus UI and provides interactive question answering grounded exclusively in the textbook content.
+
+### Core Characteristics
+
+- **Embedded Interface**: The chatbot appears as a floating widget on all textbook pages within the Docusaurus site.
+- **Exclusive Corpus**: The textbook MDX content is the ONLY knowledge source. The chatbot does not access external information or model knowledge for answering questions.
+- **Interactive Learning**: Enables learners to ask questions about concepts, request clarifications, and explore topics beyond linear reading.
+- **Text Selection Grounding**: Users can select specific text passages to scope their questions to that context.
+
+### Educational Purpose
+
+The RAG chatbot transforms the textbook from static content into an interactive learning system by:
+
+1. Enabling just-in-time concept clarification without leaving the reading context
+2. Supporting exploratory learning through natural language queries
+3. Providing source-cited answers that reference specific book sections
+4. Acknowledging knowledge boundaries when content is not present
+
+---
+
+## RAG System Architecture
+
+The RAG pipeline comprises six interconnected layers, each with defined responsibilities and constraints.
+
+### Content Source Layer
+
+| Attribute | Specification |
+|-----------|---------------|
+| Format | MDX/Markdown chapters |
+| Chunking | Semantic boundaries (sections, subsections) |
+| Chunk Size | 300-500 tokens per chunk (optimized for retrieval) |
+| Chunk IDs | Stable identifiers: `{chapter}:{section}:{position}` |
+| Metadata | Chapter title, section heading, keywords, language |
+
+Content is chunked at semantic boundaries (H2/H3 headings) to preserve conceptual coherence. Chunk IDs remain stable across re-indexing operations to maintain reference integrity.
+
+### Indexing Layer
+
+| Attribute | Specification |
+|-----------|---------------|
+| Embedding Model | OpenAI text-embedding-3-small |
+| Vector Dimensions | 1536 |
+| Vector Database | Qdrant Cloud (Free Tier) |
+| Collection Strategy | One collection per book version |
+
+The indexing layer generates vector embeddings for all chunks and stores them with associated metadata. Re-indexing operations preserve chunk ID stability for forward compatibility.
+
+### Metadata Layer
+
+| Attribute | Specification |
+|-----------|---------------|
+| Database | Neon Serverless Postgres |
+| Stored Metadata | Chunk ID, chapter, section, language, version, position |
+| Purpose | Structural filtering, version management, analytics |
+
+The metadata layer links chunk IDs to book structure, enabling structural queries (e.g., "only search Chapter 3") and version-aware retrieval.
+
+### Retrieval Layer
+
+| Attribute | Specification |
+|-----------|---------------|
+| Search Type | Hybrid (semantic similarity + structural filters) |
+| Default Scope | Entire book corpus |
+| Selected Text Mode | User selection overrides global retrieval |
+| Chapter Scoping | Optional filter by chapter boundary |
+| Result Limit | Top-k retrieval (k=5 default) |
+
+Retrieval supports two modes:
+1. **Global retrieval**: Searches entire indexed corpus
+2. **Scoped retrieval**: Restricts search to user-selected text context or specified chapter
+
+### Generation Layer
+
+| Attribute | Specification |
+|-----------|---------------|
+| Agent Framework | OpenAI Agents SDK |
+| Grounding | Strict adherence to retrieved chunks only |
+| Citation | All answers cite source chunks |
+| Refusal | Explicit acknowledgment when answer not found |
+
+The generation layer synthesizes answers from retrieved chunks without introducing external knowledge. The agent is constrained to generate only grounded responses.
+
+### API Layer
+
+| Attribute | Specification |
+|-----------|---------------|
+| Framework | FastAPI |
+| Request Handling | Stateless |
+| Authentication | CORS-aware for Docusaurus frontend |
+| Endpoints | `/api/chat` (POST), `/api/health` (GET) |
+
+The API layer serves as the interface between the frontend chatbot widget and the RAG pipeline, handling request validation, retrieval orchestration, and response formatting.
+
+---
+
+## OpenAI Agents SDK: Agent Specification
+
+### Primary Agent: `physical_ai_book_agent`
+
+#### Role and Responsibilities
+
+The `physical_ai_book_agent` serves as the exclusive question-answering interface for the textbook. Its responsibilities include:
+
+1. Interpreting user questions about Physical AI, ROS 2, simulation, and humanoid robotics
+2. Invoking retrieval tools to find relevant textbook content
+3. Synthesizing answers grounded exclusively in retrieved chunks
+4. Citing sources using chapter and section references
+5. Refusing to answer when content is not present in the corpus
+
+#### Allowed Tools
+
+| Tool | Purpose | Constraints |
+|------|---------|-------------|
+| `search_book_content` | Semantic search against indexed corpus | Read-only, no external access |
+
+The agent has access to retrieval tools only. External browsing, web search, code execution, and file system access are explicitly prohibited.
+
+#### Input Types
+
+1. **Free-form questions**: Natural language queries about any textbook topic
+   - Example: "What is the difference between ROS 1 and ROS 2?"
+
+2. **User-selected text + question**: Contextual queries scoped to highlighted passages
+   - Example: [Selected: "perception-planning-action loop"] + "Can you explain this concept?"
+
+#### Output Constraints
+
+1. **Citation requirement**: All factual statements MUST cite the source chunk using format `[Chapter: Section]`
+2. **Grounding enforcement**: Answers MUST NOT contain information absent from retrieved chunks
+3. **Refusal protocol**: When content is not found, respond: "This information is not covered in the retrieved textbook content."
+4. **No hallucination**: Model knowledge MUST NOT supplement or contradict book content
+
+#### System Prompt (Summary)
+
+```
+You are the Physical AI Textbook Assistant. Answer questions using ONLY
+retrieved textbook content. Cite sources as [Chapter: Section]. If the
+answer is not in retrieved content, state: "This information is not
+covered in the retrieved textbook content." Never contradict book content.
+Never use external knowledge.
+```
+
+### Future Extensibility
+
+The agent architecture supports future extensions:
+
+- **Personalization-aware agents**: Track learner progress and tailor responses to knowledge level
+- **Multilingual response agents**: Generate answers in Urdu and other languages while maintaining grounding in English source content
+
+---
+
+## RAG Functional Requirements
+
+### Content Indexing
+
+- **FR-RAG-001**: All MDX chapter content MUST be indexed into the vector database before chatbot deployment.
+- **FR-RAG-002**: Each indexed chunk MUST have a stable, unique chunk ID following the format `{chapter}:{section}:{position}`.
+- **FR-RAG-003**: Chunk metadata MUST include chapter identifier, section heading, keywords (from frontmatter), and content language.
+
+### Answer Generation
+
+- **FR-RAG-004**: The chatbot MUST answer questions using ONLY content retrieved from the indexed corpus.
+- **FR-RAG-005**: The chatbot MUST NOT use model knowledge to supplement or contradict retrieved content.
+- **FR-RAG-006**: All chatbot answers MUST cite source references using format `[Chapter Title: Section Heading]`.
+
+### User Interaction
+
+- **FR-RAG-007**: The chatbot MUST support user-selected text grounding, where selection overrides global retrieval scope.
+- **FR-RAG-008**: The chatbot MUST support optional chapter-scoped queries when the user specifies chapter boundaries.
+- **FR-RAG-009**: The chatbot MUST display source citations with each answer.
+
+### Absence Handling
+
+- **FR-RAG-010**: When the answer is not present in retrieved chunks, the chatbot MUST explicitly state: "This information is not covered in the retrieved textbook content."
+- **FR-RAG-011**: The chatbot MUST NOT fabricate information to fill gaps in retrieved content.
+
+### Multilingual Readiness
+
+- **FR-RAG-012**: The indexing pipeline MUST support content language metadata to enable future multilingual retrieval.
+- **FR-RAG-013**: The system architecture MUST support adding multilingual collections without restructuring.
+
+---
+
+## RAG User Scenarios & Acceptance Tests
+
+### User Story RAG-1: Ask Conceptual Question About a Chapter (Priority: P1-RAG)
+
+A learner reading Chapter 2 wants to ask a clarifying question about ROS 2 nodes without leaving the page.
+
+**Acceptance Scenarios**:
+
+1. **Given** a learner is on Chapter 2, **When** they open the chatbot and ask "What is the difference between a ROS 2 node and a topic?", **Then** they receive an answer citing Chapter 2 sections with accurate definitions.
+
+2. **Given** the chatbot receives a valid question, **When** the answer is generated, **Then** at least one source citation appears in the format `[Chapter: Section]`.
+
+3. **Given** the question has a clear answer in Chapter 2, **When** the chatbot responds, **Then** the response does not include information from external sources.
+
+---
+
+### User Story RAG-2: Ask Question About Selected Text (Priority: P2-RAG)
+
+A learner selects a paragraph about "domain randomization" and wants a simplified explanation.
+
+**Acceptance Scenarios**:
+
+1. **Given** a learner selects text containing "domain randomization", **When** they ask "Can you explain this in simpler terms?", **Then** the chatbot responds with content grounded in the selected passage.
+
+2. **Given** text is selected, **When** a question is submitted, **Then** the retrieval scope is limited to the selected context (not the full corpus).
+
+3. **Given** the selected text is from Chapter 4, **When** the answer is generated, **Then** citations reference Chapter 4 sections.
+
+---
+
+### User Story RAG-3: Ask Question Spanning Multiple Chapters (Priority: P3-RAG)
+
+A learner wants to understand how perception concepts (Chapter 1) connect to VLA systems (Chapter 5).
+
+**Acceptance Scenarios**:
+
+1. **Given** a learner asks "How does the perception-planning-action loop relate to VLA pipelines?", **When** the chatbot processes the query, **Then** it retrieves relevant chunks from both Chapter 1 and Chapter 5.
+
+2. **Given** multiple chapters are relevant, **When** the answer is generated, **Then** citations from multiple chapters appear.
+
+3. **Given** cross-chapter content is retrieved, **When** the answer is synthesized, **Then** the response coherently integrates concepts without contradiction.
+
+---
+
+### User Story RAG-4: Handle Answer Not Found (Priority: P1-RAG)
+
+A learner asks about a topic not covered in the textbook.
+
+**Acceptance Scenarios**:
+
+1. **Given** a learner asks "What is the SLAM algorithm?", **When** SLAM is not covered in the textbook, **Then** the chatbot responds: "This information is not covered in the retrieved textbook content."
+
+2. **Given** an "answer not found" scenario, **When** the chatbot responds, **Then** it does NOT hallucinate an answer from model knowledge.
+
+3. **Given** no relevant chunks are retrieved, **When** the response is generated, **Then** the `grounded` field in the response is `false`.
+
+---
+
+### RAG Edge Cases
+
+- **What happens when retrieval returns low-confidence matches?**
+  - The chatbot acknowledges uncertainty: "Based on the available content, here is what I found..." with appropriate source citations.
+
+- **What if the user selects text from a non-chapter page (e.g., intro)?**
+  - The system indexes all MDX content including intro pages; selection grounding works uniformly.
+
+- **What if the same question is asked repeatedly?**
+  - Stateless design means each query is processed independently; no session state is maintained.
+
+- **How does the system handle very long selected text passages?**
+  - Selection is truncated to 2000 characters maximum to fit within embedding context limits.
+
+---
+
+## Non-Functional Requirements (RAG)
+
+### Performance
+
+- **NFR-RAG-001**: Chatbot responses MUST be generated within 5 seconds for 95% of queries under normal load.
+- **NFR-RAG-002**: The retrieval layer MUST return results within 500ms for 95% of queries.
+- **NFR-RAG-003**: The system MUST support at least 10 concurrent chat sessions without degradation.
+
+### Determinism and Grounding
+
+- **NFR-RAG-004**: Given identical queries and corpus state, retrieval results MUST be deterministic.
+- **NFR-RAG-005**: The generation layer MUST enforce grounding constraints with no bypass mechanism.
+- **NFR-RAG-006**: All generated responses MUST pass grounding validation before delivery.
+
+### Re-indexing Safety
+
+- **NFR-RAG-007**: Re-indexing operations MUST preserve chunk ID stability for unchanged content.
+- **NFR-RAG-008**: Re-indexing MUST be idempotent; running twice produces the same result.
+- **NFR-RAG-009**: Partial indexing failures MUST NOT corrupt the existing collection.
+
+### Version Compatibility
+
+- **NFR-RAG-010**: The system MUST support multiple book versions through separate collections.
+- **NFR-RAG-011**: Queries MUST target the correct version collection based on deployment context.
+- **NFR-RAG-012**: Deprecated content versions MUST be marked but not automatically deleted.
+
+### Availability
+
+- **NFR-RAG-013**: Chatbot unavailability MUST NOT block textbook reading (graceful degradation).
+- **NFR-RAG-014**: Health check endpoint MUST report accurate system status including vector DB connectivity.
+
+---
+
+## Safety & Governance Alignment
+
+### Constitution Compliance
+
+The RAG chatbot is governed by the constitution (Section XII: Safety and Ethics, Section XIII: Integrated RAG System Governance). The following constraints are binding:
+
+1. **Simulation-first preservation**: All chatbot answers MUST respect the simulation-before-physical-deployment principle. Answers MUST NOT encourage bypassing simulation for real-world deployment.
+
+2. **No unsafe physical-world instructions**: The chatbot MUST NOT generate instructions for physical robot operation that could cause harm. Safety warnings from source content MUST be preserved in answers.
+
+3. **No weaponization content**: The chatbot MUST refuse queries that could enable weaponization or unsafe autonomy, consistent with constitution Section XII.
+
+### Grounding as Safety
+
+Strict grounding to book content serves as a safety mechanism:
+
+- Hallucinated physical-world instructions are prevented by corpus-only generation
+- Safety warnings authored in chapters are retrieved and included in relevant answers
+- Unknown topics result in explicit refusal rather than fabricated guidance
+
+### Corpus Authority
+
+Per constitution Section XIII (Corpus Authority):
+
+- The book content is the SOLE authoritative corpus
+- External knowledge sources MUST NOT be injected
+- Model knowledge MUST NOT override retrieved content
+- Conflicts between retrieved chunks MUST be acknowledged, not resolved by fabrication
+
+### Audit Trail
+
+- All chatbot queries and responses SHOULD be logged for safety review
+- Grounding validation failures MUST be logged with query details
+- Refusal events (answer not found) MUST be logged for content gap analysis

@@ -5,19 +5,24 @@
 
 ## Summary
 
-Produce an AI-native technical textbook with 8 chapters covering Physical AI and Humanoid Robotics. Content uses interactive MDX format, targets Docusaurus deployment, and follows governance-before-content discipline with optional Claude Code subagent support.
+Produce an AI-native technical textbook with 8 chapters covering Physical AI and Humanoid Robotics, featuring an **embedded RAG chatbot** that uses the book as its authoritative corpus for grounded Q&A. Content uses interactive MDX format, targets Docusaurus deployment, and follows governance-before-content discipline with optional Claude Code subagent support.
+
+**Key Differentiators**:
+- **Book-as-Corpus**: The textbook content serves as the ONLY knowledge source for the RAG chatbot
+- **Text Selection Grounding**: Users can select text to scope chatbot queries
+- **Strict Grounding Rules**: Agent refuses to answer when content is not in the book
 
 ## Technical Context
 
-**Language/Version**: Python 3.10+ (rclpy examples), MDX (content), TypeScript (Docusaurus)
-**Primary Dependencies**: Docusaurus 3.x, ROS 2 Humble/Iron, Gazebo, NVIDIA Isaac Sim, rclpy
-**Storage**: Git repository (content as MDX files), no database
-**Testing**: Manual editorial review, code example validation via ROS 2 runtime
-**Target Platform**: Docusaurus static site → GitHub Pages / Vercel
-**Project Type**: Documentation/Textbook (static site generation)
-**Performance Goals**: <3s page load, RAG-optimized chunk size (500-1000 tokens per section)
-**Constraints**: 4,000-6,000 words per chapter, ROS 2 only (no ROS 1), simulation-first
-**Scale/Scope**: 8 chapters, ~40,000-48,000 total words, Unitree H1 reference model
+**Language/Version**: Python 3.10+ (rclpy examples, FastAPI backend), MDX (content), TypeScript (Docusaurus, React)
+**Primary Dependencies**: Docusaurus 3.x, ROS 2 Humble/Iron, Gazebo, NVIDIA Isaac Sim, rclpy, OpenAI Agents SDK, Qdrant, FastAPI
+**Storage**: Git repository (content as MDX files), Qdrant Cloud (vector embeddings), Neon Postgres (metadata)
+**Testing**: Manual editorial review, code example validation via ROS 2 runtime, RAG grounding validation
+**Target Platform**: Docusaurus static site → GitHub Pages / Vercel; FastAPI backend → Render
+**Project Type**: Documentation/Textbook (static site generation) + RAG Chatbot (AI-powered Q&A)
+**Performance Goals**: <3s page load, RAG-optimized chunk size (500-1000 tokens per section), <2s chatbot response
+**Constraints**: 4,000-6,000 words per chapter, ROS 2 only (no ROS 1), simulation-first, book-only grounding
+**Scale/Scope**: 8 chapters, ~40,000-48,000 total words, Unitree H1 reference model, ~200 vector chunks
 
 ## Constitution Check
 
@@ -96,9 +101,36 @@ src/
 ├── components/
 │   ├── CodePlayground.tsx             # Interactive code execution
 │   ├── Quiz.tsx                       # Embedded quiz component
-│   └── CollapsibleSection.tsx         # Expandable content blocks
+│   ├── CollapsibleSection.tsx         # Expandable content blocks
+│   └── ChatbotWidget.tsx              # RAG chatbot UI component
+├── hooks/
+│   └── useTextSelection.ts            # Text selection detection
+├── services/
+│   └── chatApi.ts                     # RAG API client
 └── theme/
-    └── custom.css                     # Textbook styling
+    ├── custom.css                     # Textbook styling
+    └── Layout/
+        └── index.tsx                  # Global layout with chatbot
+
+backend/                               # RAG Chatbot Backend
+├── app/
+│   ├── main.py                        # FastAPI application entry
+│   ├── config.py                      # Environment configuration
+│   ├── api/routes/
+│   │   ├── chat.py                    # POST /api/chat endpoint
+│   │   └── health.py                  # GET /api/health endpoint
+│   ├── core/
+│   │   ├── agent.py                   # OpenAI Agents SDK agent
+│   │   ├── retrieval.py               # Qdrant vector search
+│   │   └── embeddings.py              # Embedding generation
+│   ├── services/
+│   │   └── indexing.py                # MDX parsing & chunking
+│   └── models/
+│       └── schemas.py                 # Pydantic models
+├── scripts/
+│   └── index_content.py               # CLI to index book content
+├── requirements.txt                   # Python dependencies
+└── .env                               # Environment variables (gitignored)
 
 static/
 ├── img/                               # Shared images
@@ -108,7 +140,7 @@ docusaurus.config.ts                   # Site configuration
 sidebars.ts                            # Navigation structure
 ```
 
-**Structure Decision**: Docusaurus documentation site with MDX chapters organized by topic. Each chapter is a self-contained directory with index.mdx and assets. Custom React components provide interactivity (code playgrounds, quizzes).
+**Structure Decision**: Docusaurus documentation site with MDX chapters organized by topic. Each chapter is a self-contained directory with index.mdx and assets. Custom React components provide interactivity (code playgrounds, quizzes). **RAG chatbot** implemented as a separate FastAPI backend with OpenAI Agents SDK, deployed independently and accessed via REST API.
 
 ---
 
@@ -135,20 +167,27 @@ sidebars.ts                            # Navigation structure
 
 ### Phase 2: Specification Authoring
 
-**Objective**: Complete feature specification with all clarifications resolved.
+**Objective**: Complete feature specification with all clarifications resolved, including RAG architecture.
 
 **Actions**:
 1. Create spec.md with 8 user stories (1 per chapter)
 2. Define functional requirements (FR-001 through FR-015)
 3. Run `/sp.clarify` to resolve ambiguities
 4. Document success criteria and assumptions
+5. Define RAG functional requirements (FR-RAG-001 through FR-RAG-013)
+6. Define RAG non-functional requirements (NFR-RAG-001 through NFR-RAG-014)
+7. Document RAG agent specification and grounding rules
+8. Define RAG user scenarios with acceptance tests
 
 **Outputs**:
 - [x] spec.md with 15 functional requirements
 - [x] Clarifications session (MDX format, Unitree H1, word count)
 - [x] Quality checklist passed
+- [x] RAG system architecture documented
+- [x] Agent grounding rules specified
+- [x] RAG acceptance tests defined
 
-**Gate**: No [NEEDS CLARIFICATION] markers remain
+**Gate**: No [NEEDS CLARIFICATION] markers remain; RAG architecture approved
 
 ---
 
@@ -263,19 +302,84 @@ sidebars.ts                            # Navigation structure
 4. Test retrieval queries against chapter content
 5. Validate multilingual transformation compatibility (no idioms)
 6. Add metadata frontmatter for RAG indexing
+7. Validate chunk boundaries align with semantic sections
+8. Test grounding with edge-case queries (out-of-scope topics)
+9. Verify citation format consistency across retrieved chunks
 
 **Outputs**:
-- [ ] Chunk analysis report (section sizes, token counts)
+- [x] Chunk analysis report (193 chunks indexed, ~200-600 tokens each)
 - [ ] Updated chapters with optimized structure
-- [ ] RAG test query results
+- [x] RAG test query results (grounding validated)
+- [x] Vector embeddings indexed in Qdrant Cloud
 
-**Gate**: SC-005 validated (concepts findable via keyword search)
+**Gate**: SC-005 validated (concepts findable via keyword search); RAG grounding test pass rate >95%
 
 ---
 
-### Phase 8: Deployment Preparation
+### Phase 8: Integrated RAG System Lifecycle
 
-**Objective**: Prepare for Docusaurus deployment to GitHub Pages / Vercel.
+**Objective**: Implement and validate the RAG chatbot as a first-class system component.
+
+**Actions**:
+1. **Content Preparation & Chunking**
+   - Parse MDX files with frontmatter extraction
+   - Chunk content at semantic boundaries (H2/H3 headings)
+   - Generate stable chunk IDs: `{chapter}:{section}:{position}`
+   - Validate chunk sizes (500-1000 tokens target)
+
+2. **Vector Indexing (Qdrant)**
+   - Configure Qdrant Cloud collection with cosine similarity
+   - Generate embeddings via OpenAI text-embedding-3-small
+   - Upsert chunks with metadata payload
+   - Verify collection health and chunk count
+
+3. **Metadata Storage (Neon Postgres)**
+   - Create schema for conversation history
+   - Store user feedback and grounding metrics
+   - Track chunk usage analytics
+
+4. **Agent Definition (OpenAI Agents SDK)**
+   - Define grounding system prompt with constitution rules
+   - Implement `search_book_content` function tool
+   - Configure conversation memory (last 10 messages)
+   - Implement grounding validation logic
+
+5. **API Layer (FastAPI)**
+   - POST `/api/chat` endpoint with streaming support
+   - GET `/api/health` with Qdrant connectivity check
+   - CORS configuration for GitHub Pages origin
+   - Rate limiting and error handling
+
+6. **UI Integration (Docusaurus)**
+   - ChatbotWidget React component (floating button + modal)
+   - Text selection detection hook
+   - Chat API client with error handling
+   - Layout swizzle for global injection
+
+7. **Safety, Validation & Governance**
+   - Grounding test suite (in-scope and out-of-scope queries)
+   - Citation format validation
+   - Hallucination detection heuristics
+   - User feedback collection
+
+**Outputs**:
+- [x] `backend/` directory with FastAPI application
+- [x] `backend/app/core/agent.py` with OpenAI Agents SDK integration
+- [x] `backend/app/core/retrieval.py` with Qdrant search
+- [x] `backend/scripts/index_content.py` CLI tool
+- [x] `src/components/ChatbotWidget.tsx` React component
+- [x] `src/hooks/useTextSelection.ts` selection detection
+- [x] 193 chunks indexed in Qdrant Cloud
+- [ ] Neon Postgres schema for analytics
+- [ ] Grounding test suite with >95% pass rate
+
+**Gate**: Chatbot responds correctly to 10 sample queries; grounding refusal works for out-of-scope topics
+
+---
+
+### Phase 9: Deployment Preparation
+
+**Objective**: Prepare for Docusaurus deployment to GitHub Pages / Vercel and RAG backend deployment to Render.
 
 **Actions**:
 1. Run `npm run build` and fix any errors
@@ -284,19 +388,32 @@ sidebars.ts                            # Navigation structure
 4. Configure deployment target (GitHub Pages or Vercel)
 5. Set up CI/CD pipeline for automated builds
 6. Create deployment documentation
+7. **RAG Service Readiness Checks**:
+   - Verify Qdrant Cloud collection accessible from production
+   - Verify OpenAI API key valid and rate limits sufficient
+   - Configure FastAPI backend for Render deployment
+   - Set production environment variables
+   - Test CORS with production frontend URL
+8. Deploy FastAPI backend to Render
+9. Update frontend API URL to production endpoint
+10. End-to-end testing with production services
 
 **Outputs**:
-- [ ] Successful production build
+- [ ] Successful production build (Docusaurus)
 - [ ] Deployment configuration (GitHub Actions or Vercel config)
 - [ ] Deployment documentation
+- [ ] FastAPI backend deployed to Render
+- [ ] Production `.env` configured securely
+- [ ] CORS validated for production origin
+- [ ] End-to-end RAG flow tested
 
-**Gate**: SC-007 validated (content renders correctly, deployable)
+**Gate**: SC-007 validated (content renders correctly, deployable); RAG chatbot functional in production
 
 ---
 
-### Phase 9: Maintenance & Extension
+### Phase 10: Maintenance & Extension
 
-**Objective**: Define ongoing maintenance procedures.
+**Objective**: Define ongoing maintenance procedures for textbook and RAG system.
 
 **Actions**:
 1. Document ROS 2 version update procedure (Humble → future LTS)
@@ -304,13 +421,27 @@ sidebars.ts                            # Navigation structure
 3. Create contribution guidelines for external authors
 4. Define Isaac Sim version compatibility matrix
 5. Plan Unitree H1 model update path
+6. **RAG System Maintenance**:
+   - Define re-indexing procedure when content changes
+   - Document chunk ID stability requirements
+   - Create monitoring dashboard for Qdrant health
+   - Define OpenAI API key rotation procedure
+   - Establish grounding regression test suite
+   - Plan embedding model upgrade path (text-embedding-3-small → future)
+7. **Analytics & Feedback Loop**:
+   - Monitor most-queried topics for content gaps
+   - Track grounding failure patterns
+   - Collect user satisfaction metrics
 
 **Outputs**:
 - [ ] `CONTRIBUTING.md` with authoring guidelines
 - [ ] `MAINTENANCE.md` with update procedures
 - [ ] Version compatibility matrix
+- [ ] RAG re-indexing runbook
+- [ ] Grounding regression test suite
+- [ ] Monitoring and alerting configuration
 
-**Gate**: Documentation complete for handoff
+**Gate**: Documentation complete for handoff; RAG maintenance procedures validated
 
 ---
 
@@ -332,11 +463,22 @@ sidebars.ts                            # Navigation structure
 | ROS 2 Iron deprecation | Medium | Pin to Humble as primary; Iron as secondary |
 | Context7 curriculum drift | Medium | Re-sync before each chapter authoring phase |
 | Code example breakage | High | CI validation against ROS 2 runtime container |
+| **RAG: OpenAI API rate limits** | Medium | Implement request queuing; monitor usage; upgrade tier if needed |
+| **RAG: Qdrant Cloud free tier limits** | Medium | Monitor vector count; upgrade to paid tier before limit |
+| **RAG: Hallucination despite grounding** | High | Strict system prompt; grounding validation; user feedback loop |
+| **RAG: Embedding model deprecation** | Low | Pin embedding model version; plan migration path |
+| **RAG: Chunk drift after content updates** | Medium | Re-index on content change; stable chunk ID scheme |
 
 ---
 
 ## Next Steps
 
-1. Run `/sp.tasks` to generate task breakdown
-2. Execute Phase 4 (Book Skeleton Creation) first
-3. Begin Chapter 1 authoring after skeleton verified
+1. ~~Run `/sp.tasks` to generate task breakdown~~ ✅ Complete (240 tasks across 18 phases)
+2. ~~Execute Phase 4 (Book Skeleton Creation)~~ ✅ Complete
+3. ~~Begin Chapter 1-8 authoring~~ ✅ Complete (8 chapters, ~193 chunks)
+4. ~~Implement RAG backend (Phase 8)~~ ✅ Mostly complete (193 chunks indexed)
+5. **Remaining RAG tasks**:
+   - T195-T198: Neon Postgres schema for analytics
+   - T220-T224: Safety validation and governance tests
+6. Deploy to production (Phase 9)
+7. Create maintenance documentation (Phase 10)

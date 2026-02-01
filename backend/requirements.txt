@@ -1,0 +1,31 @@
+# FastAPI Backend for RAG Chatbot
+# Physical Humanoid Robots Textbook
+
+# Web Framework
+fastapi>=0.109.0
+uvicorn[standard]>=0.27.0
+
+# OpenAI Agents SDK
+openai-agents>=0.0.5
+
+# Vector Database
+qdrant-client>=1.7.0
+
+# PostgreSQL (Neon Serverless)
+asyncpg>=0.29.0
+sqlalchemy[asyncio]>=2.0.0
+
+# Configuration
+pydantic-settings>=2.1.0
+python-dotenv>=1.0.0
+
+# Content Processing
+tiktoken>=0.5.0
+pyyaml>=6.0.0
+python-frontmatter>=1.0.0
+
+# HTTP Client
+httpx>=0.26.0
+
+# CORS
+starlette>=0.35.0

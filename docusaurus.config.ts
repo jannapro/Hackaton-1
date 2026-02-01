@@ -34,6 +34,12 @@ const config: Config = {
     locales: ['en'],
   },
 
+  // Custom fields for RAG Chatbot configuration
+  customFields: {
+    // Backend API URL - update for production deployment
+    chatbotApiUrl: process.env.CHATBOT_API_URL || 'http://localhost:8000',
+  },
+
   presets: [
     [
       'classic',

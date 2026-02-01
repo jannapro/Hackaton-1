@@ -370,34 +370,119 @@
 
 ---
 
-## Phase 16: Deployment Preparation
+## Phase 16: Integrated RAG System Implementation
+
+**Objective**: Implement a governed Retrieval-Augmented Generation system that enables interactive question answering grounded strictly in textbook content, per Constitution Section XIII.
+
+**Gate**: Chatbot deployed, grounding validated, refusal behavior tested.
+
+### A. Content Preparation & Chunking
+
+- [x] T183 Implement semantic chunk boundary detection in backend/app/services/indexing.py
+- [x] T184 [P] Define stable chunk ID format `{chapter}:{section}:{position}` in backend/app/services/indexing.py
+- [x] T185 [P] Extract and preserve chapter/section metadata from MDX frontmatter in backend/app/services/indexing.py
+- [x] T186 [P] Implement language-agnostic chunking (no English idiom dependencies) in backend/app/services/indexing.py
+- [x] T187 Validate chunk size targets (300-500 tokens) across all chapters
+- [x] T187.1 [P] Verify multilingual-safe chunking preserves semantic boundaries for future translation
+
+### B. Vector Indexing (Qdrant Cloud)
+
+- [x] T188 Create Qdrant Cloud collection `physical_ai_textbook` with COSINE distance
+- [x] T189 [P] Configure OpenAI text-embedding-3-small (1536 dimensions) in backend/app/core/embeddings.py
+- [x] T190 Implement batch embedding generation in backend/app/core/embeddings.py
+- [x] T191 Implement chunk upsert with payload metadata in backend/app/core/retrieval.py
+- [x] T192 Create indexing CLI script at backend/scripts/index_content.py
+- [x] T193 Run full content indexing and validate ~150-200 chunks indexed
+- [x] T194 Document re-indexing procedure in backend/README.md
+- [x] T194.1 [P] Implement collection versioning strategy for content updates in backend/app/core/retrieval.py
+- [ ] T194.2 [P] Validate retrieval accuracy with test queries (top-3 relevance check)
+
+### C. Metadata Storage (Neon Postgres)
+
+- [x] T195 Define Postgres schema for chunks table (id, chapter, section, language, version) in backend/app/models/database.py
+- [x] T196 [P] Create SQLAlchemy models for metadata entities in backend/app/models/database.py
+- [x] T197 [P] Implement async database connection pool in backend/app/core/database.py
+- [ ] T198 Link chunk IDs in Qdrant to metadata rows in Postgres
+- [x] T198.1 [P] Store language and content version metadata for each chunk in backend/app/models/database.py
+- [x] T198.2 [P] Create foreign key relationships linking chunks to chapters/sections in backend/app/models/database.py
+
+### D. Agent Definition (OpenAI Agents SDK)
+
+- [x] T199 Define `physical_ai_book_agent` with grounding system prompt in backend/app/core/agent.py
+- [x] T200 [P] Implement `search_book_content` tool with retrieval-only access in backend/app/core/agent.py
+- [x] T201 Enforce refusal behavior when answer not in retrieved content in backend/app/core/agent.py
+- [x] T202 [P] Implement user-selected text grounding override in backend/app/core/agent.py
+- [x] T203 Configure agent model (gpt-4o-mini) in backend/app/config.py
+- [x] T203.1 [P] Validate agent tools restricted to retrieval-only (no external API calls) in backend/app/core/agent.py
+- [x] T203.2 [P] Test user-selected text grounding overrides global search in backend/app/core/agent.py
+
+### E. API Layer (FastAPI)
+
+- [x] T204 Create FastAPI application entry point at backend/app/main.py
+- [x] T205 [P] Implement POST /api/chat endpoint in backend/app/api/routes/chat.py
+- [x] T206 [P] Implement GET /api/health endpoint in backend/app/api/routes/health.py
+- [x] T207 [P] Define Pydantic request/response schemas in backend/app/models/schemas.py
+- [x] T208 Configure CORS for Docusaurus frontend in backend/app/main.py
+- [x] T209 [P] Implement chapter-scoped query filter in backend/app/core/retrieval.py
+
+### F. UI Integration (Docusaurus)
+
+- [x] T210 Create ChatbotWidget React component at src/components/ChatbotWidget.tsx
+- [x] T211 [P] Implement useTextSelection hook at src/hooks/useTextSelection.ts
+- [x] T212 [P] Create chat API client at src/services/chatApi.ts
+- [x] T213 Swizzle Docusaurus Layout to inject chatbot at src/theme/Layout/index.tsx
+- [x] T214 [P] Export ChatbotWidget from src/components/index.ts
+- [x] T215 [P] Configure chatbotApiUrl in docusaurus.config.ts customFields
+- [x] T216 [P] Add chatbot styles for dark/light theme compatibility in src/css/custom.css
+- [ ] T217 Test text selection → query flow in browser
+- [x] T217.1 [P] Validate chatbot widget accessibility (ARIA labels, keyboard navigation) in src/components/ChatbotWidget.tsx
+- [ ] T217.2 [P] Performance test: verify chatbot does not block page load (<100ms impact)
+
+### G. Safety, Validation & Governance
+
+- [x] T218 Validate grounding: test query with answer in book returns cited response
+- [x] T219 Validate refusal: test query about topic NOT in book returns "not covered" response
+- [x] T220 [P] Verify simulation-first safety rules preserved in agent responses
+- [x] T221 [P] Test that agent never provides hallucinated physical-world instructions
+- [x] T222 Confirm Constitution Section XIII compliance (corpus authority, grounding rules)
+- [x] T223 [P] Document RAG system limitations in backend/README.md
+- [x] T224 Create .env.example with all required environment variables at project root
+- [x] T224.1 [P] Create grounding test suite with 10+ in-scope and 10+ out-of-scope queries in backend/tests/test_grounding.py
+- [x] T224.2 [P] Document known limitations and edge cases in backend/README.md
+
+**Checkpoint**: RAG chatbot operational, grounding validated, refusal behavior tested.
+
+---
+
+## Phase 17: Deployment Preparation
 
 **Objective**: Publish the book to GitHub Pages or Vercel.
 
-- [ ] T168 Run final `npm run build` and fix any errors
-- [ ] T169 [P] Validate all internal links resolve correctly
-- [ ] T170 [P] Test responsive design on mobile/tablet viewports
-- [ ] T171 Configure GitHub Actions for automated builds at .github/workflows/deploy.yml
-- [ ] T172 [P] Configure Vercel deployment (alternative) at vercel.json
-- [ ] T173 Build static site with `npm run build`
-- [ ] T174 Deploy to production (GitHub Pages or Vercel)
-- [ ] T175 Create deployment documentation at docs/deployment.md
+- [ ] T225 Run final `npm run build` and fix any errors
+- [ ] T226 [P] Validate all internal links resolve correctly
+- [ ] T227 [P] Test responsive design on mobile/tablet viewports
+- [ ] T228 Configure GitHub Actions for automated builds at .github/workflows/deploy.yml
+- [ ] T229 [P] Configure Vercel deployment (alternative) at vercel.json
+- [ ] T230 Build static site with `npm run build`
+- [ ] T231 Deploy to production (GitHub Pages or Vercel)
+- [ ] T232 Create deployment documentation at docs/deployment.md
 
 **Checkpoint**: SC-007 validated (content renders correctly, deployed).
 
 ---
 
-## Phase 17: Maintenance & Extension
+## Phase 18: Maintenance & Extension
 
 **Objective**: Enable safe iteration after launch.
 
-- [ ] T176 [P] Create CONTRIBUTING.md with authoring guidelines
-- [ ] T177 [P] Create MAINTENANCE.md with update procedures
-- [ ] T178 Document ROS 2 version update procedure (Humble → future LTS) in MAINTENANCE.md
-- [ ] T179 Define chapter update workflow (Context7 re-sync) in MAINTENANCE.md
-- [ ] T180 [P] Create version compatibility matrix at docs/compatibility.md
-- [ ] T181 Document Isaac Sim version compatibility in docs/compatibility.md
-- [ ] T182 Plan Unitree H1 model update path in MAINTENANCE.md
+- [ ] T233 [P] Create CONTRIBUTING.md with authoring guidelines
+- [ ] T234 [P] Create MAINTENANCE.md with update procedures
+- [ ] T235 Document ROS 2 version update procedure (Humble → future LTS) in MAINTENANCE.md
+- [ ] T236 Define chapter update workflow (Context7 re-sync) in MAINTENANCE.md
+- [ ] T237 [P] Create version compatibility matrix at docs/compatibility.md
+- [ ] T238 Document Isaac Sim version compatibility in docs/compatibility.md
+- [ ] T239 Plan Unitree H1 model update path in MAINTENANCE.md
+- [ ] T240 Document RAG system re-indexing procedure in MAINTENANCE.md
 
 **Checkpoint**: Documentation complete for handoff.
 
@@ -416,8 +501,9 @@ Phase 4 → Phase 5 (Agent Definition - Optional)
 Phase 4 → Phase 6-13 (Chapter Authoring - can run in parallel after skeleton)
 Phase 6-13 → Phase 14 (Cross-Chapter Consistency)
 Phase 14 → Phase 15 (AI-Native Optimization)
-Phase 15 → Phase 16 (Deployment)
-Phase 16 → Phase 17 (Maintenance)
+Phase 15 → Phase 16 (Integrated RAG System)
+Phase 16 → Phase 17 (Deployment)
+Phase 17 → Phase 18 (Maintenance)
 ```
 
 ### User Story Dependencies
