@@ -7,3 +7,4 @@ export { default as CodePlayground } from './CodePlayground';
 export { default as Quiz } from './Quiz';
 export { default as CollapsibleSection } from './CollapsibleSection';
 export { default as ChatbotWidget } from './ChatbotWidget';
+export { default as LanguageSwitcher } from './LanguageSwitcher';

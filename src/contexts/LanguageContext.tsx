@@ -1,12 +1,12 @@
 /**
  * Language Context for multilingual support.
  *
- * Provides language state across the app, synced with Docusaurus i18n.
+ * Provides language state across the app.
+ * Works in both dev mode and production.
  * The chatbot uses this to know which language to respond in.
  */
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import useDocusaurusContext from '@docusaurus/useDocusaurusContext';
 
 export type Language = 'en' | 'ur';
 
@@ -48,32 +48,48 @@ const translations = {
 
 const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
 
+// Get initial language from localStorage or URL
+function getInitialLanguage(): Language {
+  if (typeof window === 'undefined') return 'en';
+
+  // Check localStorage first
+  const stored = localStorage.getItem('docusaurus.locale') as Language;
+  if (stored && (stored === 'en' || stored === 'ur')) {
+    return stored;
+  }
+
+  // Check URL for locale
+  const path = window.location.pathname;
+  if (path.includes('/ur/') || path.startsWith('/ur')) {
+    return 'ur';
+  }
+
+  return 'en';
+}
+
 export function LanguageProvider({ children }: { children: ReactNode }) {
-  const { i18n } = useDocusaurusContext();
-  const currentLocale = i18n.currentLocale as Language;
+  const [language, setLanguageState] = useState<Language>('en');
+  const [mounted, setMounted] = useState(false);
 
-  const [language, setLanguageState] = useState<Language>(currentLocale || 'en');
-
-  // Sync with Docusaurus locale changes
+  // Initialize language on mount (client-side only)
   useEffect(() => {
-    if (currentLocale && currentLocale !== language) {
-      setLanguageState(currentLocale);
-    }
-  }, [currentLocale]);
+    setLanguageState(getInitialLanguage());
+    setMounted(true);
+  }, []);
 
   const setLanguage = (lang: Language) => {
     setLanguageState(lang);
     // Store preference in localStorage
     if (typeof window !== 'undefined') {
-      localStorage.setItem('preferred-language', lang);
+      localStorage.setItem('docusaurus.locale', lang);
     }
   };
 
   const value: LanguageContextType = {
-    language,
+    language: mounted ? language : 'en',
     setLanguage,
-    isRTL: language === 'ur',
-    labels: translations[language],
+    isRTL: mounted && language === 'ur',
+    labels: translations[mounted ? language : 'en'],
   };
 
   return (

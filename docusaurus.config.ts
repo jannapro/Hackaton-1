@@ -99,7 +99,7 @@ const config: Config = {
           label: 'Textbook',
         },
         {
-          type: 'localeDropdown',
+          type: 'custom-languageSwitcher',
           position: 'right',
         },
         {
