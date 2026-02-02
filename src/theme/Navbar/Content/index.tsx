@@ -14,8 +14,8 @@ import NavbarMobileSidebarToggle from '@theme/Navbar/MobileSidebar/Toggle';
 import NavbarLogo from '@theme/Navbar/Logo';
 import NavbarSearch from '@theme/Navbar/Search';
 import BrowserOnly from '@docusaurus/BrowserOnly';
-import LanguageSwitcher from '@site/src/components/LanguageSwitcher';
 import UserMenu from '@site/src/components/UserMenu';
+import LanguageSwitcher from '@site/src/components/LanguageSwitcher';
 import styles from './styles.module.css';
 
 function useNavbarItems() {
@@ -85,7 +85,7 @@ export default function NavbarContent(): JSX.Element {
           <NavbarItems items={rightItems} />
           {/* Add User Menu (only renders when authenticated) */}
           <BrowserOnly>{() => <UserMenu />}</BrowserOnly>
-          {/* Add Language Switcher */}
+          {/* Language Switcher */}
           <LanguageSwitcher />
           <NavbarColorModeToggle className={styles.colorModeToggle} />
           {!searchBarItem && (

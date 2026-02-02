@@ -37,7 +37,7 @@ const styles = {
     width: '56px',
     height: '56px',
     borderRadius: '50%',
-    backgroundColor: 'var(--ifm-color-primary)',
+    backgroundColor: '#2563EB',
     color: 'white',
     border: 'none',
     cursor: 'pointer',
@@ -65,7 +65,7 @@ const styles = {
   },
   header: {
     padding: '16px',
-    backgroundColor: 'var(--ifm-color-primary)',
+    backgroundColor: '#2563EB',
     color: 'white',
     display: 'flex',
     justifyContent: 'space-between',
@@ -102,7 +102,7 @@ const styles = {
   },
   userMessage: {
     alignSelf: 'flex-end' as const,
-    backgroundColor: 'var(--ifm-color-primary)',
+    backgroundColor: '#2563EB',
     color: 'white',
     borderBottomRightRadius: '4px',
   },
@@ -172,7 +172,7 @@ const styles = {
   sendButton: {
     padding: '10px 16px',
     borderRadius: '20px',
-    backgroundColor: 'var(--ifm-color-primary)',
+    backgroundColor: '#2563EB',
     color: 'white',
     border: 'none',
     cursor: 'pointer',
@@ -338,6 +338,7 @@ export default function ChatbotWidget(): JSX.Element {
       {isOpen && (
         <div
           ref={chatPanelRef}
+          className="chatbot-modal"
           style={{
             ...styles.chatPanel,
             direction: isRTL ? 'rtl' : 'ltr',
@@ -354,7 +355,7 @@ export default function ChatbotWidget(): JSX.Element {
           </span>
 
           {/* Header */}
-          <div style={styles.header}>
+          <div className="chatbot-header" style={styles.header}>
             <h4 id="chatbot-title" style={styles.headerTitle}>{labels.chatTitle}</h4>
             <button
               style={styles.closeButton}
@@ -446,7 +447,7 @@ export default function ChatbotWidget(): JSX.Element {
           </div>
 
           {/* Input */}
-          <div style={styles.inputContainer}>
+          <div className="chatbot-input-area" style={styles.inputContainer}>
             <input
               ref={inputRef}
               type="text"
@@ -478,6 +479,7 @@ export default function ChatbotWidget(): JSX.Element {
 
       {/* Toggle Button */}
       <button
+        className="chatbot-toggle"
         style={{
           ...styles.toggleButton,
           transform: isOpen ? 'scale(0.9)' : 'scale(1)',

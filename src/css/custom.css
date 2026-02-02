@@ -3,47 +3,250 @@
  * T016/T017: Technical, futuristic UI theme for robotics education
  */
 
-/* Light mode - technical, clean appearance */
+/* Import Futuristic Fonts */
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&family=Space+Grotesk:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600&display=swap');
+
+/* =============================================
+   LIGHT MODE - Clean, Open, Neutral
+   ============================================= */
 :root {
-  /* Primary color - robotics blue */
-  --ifm-color-primary: #0066cc;
-  --ifm-color-primary-dark: #005cb8;
-  --ifm-color-primary-darker: #0056ad;
-  --ifm-color-primary-darkest: #00478f;
-  --ifm-color-primary-light: #0070e0;
-  --ifm-color-primary-lighter: #0076eb;
-  --ifm-color-primary-lightest: #1a8fff;
+  /* Primary accent - muted blue */
+  --ifm-color-primary: #2563EB;
+  --ifm-color-primary-dark: #1D4ED8;
+  --ifm-color-primary-darker: #1E40AF;
+  --ifm-color-primary-darkest: #1E3A8A;
+  --ifm-color-primary-light: #3B82F6;
+  --ifm-color-primary-lighter: #60A5FA;
+  --ifm-color-primary-lightest: #93C5FD;
+
+  /* Light backgrounds */
+  --ifm-background-color: #FFFFFF;
+  --ifm-background-surface-color: #F5F7FA;
+
+  /* Dark text for light mode */
+  --ifm-font-color-base: #1F2937;
+  --ifm-font-color-secondary: #6B7280;
 
   /* Code styling */
   --ifm-code-font-size: 90%;
-  --docusaurus-highlighted-code-line-bg: rgba(0, 102, 204, 0.1);
+  --docusaurus-highlighted-code-line-bg: rgba(37, 99, 235, 0.1);
 
-  /* Font configuration - technical/mono-friendly */
+  /* Font configuration */
   --ifm-font-family-base: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   --ifm-font-family-monospace: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace;
 
   /* Spacing and layout */
   --ifm-global-radius: 4px;
   --ifm-code-border-radius: 4px;
-
-  /* Content width for readability */
   --ifm-container-width-xl: 1200px;
+
+  /* Navbar and footer - light */
+  --ifm-navbar-background-color: #FFFFFF;
+  --ifm-footer-background-color: #F5F7FA;
+
+  /* Cards and sections - light grays */
+  --ifm-card-background-color: #FFFFFF;
+  --ifm-color-emphasis-100: #F3F4F6;
+  --ifm-color-emphasis-200: #E5E7EB;
+  --ifm-color-emphasis-300: #D1D5DB;
+  --ifm-color-emphasis-400: #9CA3AF;
+  --ifm-color-emphasis-500: #6B7280;
+  --ifm-color-emphasis-600: #4B5563;
+
+  /* Links */
+  --ifm-link-color: #2563EB;
+  --ifm-link-hover-color: #1D4ED8;
+
+  /* Code blocks */
+  --ifm-code-background: #F3F4F6;
+
+  /* Menu and sidebar */
+  --ifm-menu-color: #1F2937;
+  --ifm-menu-color-active: #2563EB;
+  --ifm-menu-color-background-active: rgba(37, 99, 235, 0.08);
 }
 
-/* Dark mode - for comfortable reading during long study sessions */
-[data-theme='dark'] {
-  --ifm-color-primary: #4da6ff;
-  --ifm-color-primary-dark: #2e97ff;
-  --ifm-color-primary-darker: #1f8fff;
-  --ifm-color-primary-darkest: #0073e6;
-  --ifm-color-primary-light: #6cb5ff;
-  --ifm-color-primary-lighter: #7bbdff;
-  --ifm-color-primary-lightest: #a3d1ff;
-  --docusaurus-highlighted-code-line-bg: rgba(77, 166, 255, 0.15);
+/* =============================================
+   NAVBAR STYLING - Compact & Clean
+   ============================================= */
 
-  /* Dark mode background - easy on the eyes */
-  --ifm-background-color: #1a1a2e;
-  --ifm-background-surface-color: #16213e;
+/* Make navbar more compact */
+.navbar {
+  height: 40px;
+  min-height: 40px;
+  padding: 0 0.75rem;
+}
+
+.navbar__inner {
+  max-width: 100%;
+}
+
+/* Smaller logo */
+.navbar__logo {
+  height: 20px;
+  margin-right: 6px;
+}
+
+/* Smaller title */
+.navbar__title {
+  font-size: 12px;
+  font-weight: 600;
+}
+
+/* Compact navbar items */
+.navbar__items {
+  gap: 4px;
+}
+
+.navbar__item {
+  font-size: 11px;
+  padding: 2px 6px;
+}
+
+/* Smaller toggle button */
+.navbar .clean-btn {
+  padding: 4px;
+}
+
+.navbar svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* Dark mode navbar */
+[data-theme='dark'] .navbar {
+  background: #0a0a0a;
+  border-bottom: 1px solid rgba(0, 212, 255, 0.1);
+}
+
+/* Light mode navbar */
+[data-theme='light'] .navbar {
+  background: #ffffff;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+/* Color mode toggle smaller */
+.navbar .colorModeToggle {
+  margin-left: 8px;
+}
+
+/* =============================================
+   SIDEBAR CHAPTER SPACING
+   ============================================= */
+
+/* Add spacing between sidebar menu items */
+.menu__list-item {
+  margin-bottom: 8px;
+}
+
+.menu__link {
+  padding: 10px 12px;
+  border-radius: 6px;
+}
+
+/* Category items (chapter headings) get more spacing */
+.menu__list-item--collapsed,
+.menu__list-item:not(.menu__list-item--collapsed) > .menu__link--sublist {
+  margin-top: 16px;
+  margin-bottom: 8px;
+}
+
+/* First item doesn't need top margin */
+.menu__list > .menu__list-item:first-child {
+  margin-top: 0;
+}
+
+/* =============================================
+   DARK MODE - Scientific, Research-Grade, Immersive
+   ============================================= */
+[data-theme='dark'] {
+  /* Scientific blue accent - glowing against dark */
+  --ifm-color-primary: #4DA3FF;
+  --ifm-color-primary-dark: #3A94F0;
+  --ifm-color-primary-darker: #2A85E0;
+  --ifm-color-primary-darkest: #1A6BC0;
+  --ifm-color-primary-light: #6CB5FF;
+  --ifm-color-primary-lighter: #8BC5FF;
+  --ifm-color-primary-lightest: #AAD5FF;
+  --docusaurus-highlighted-code-line-bg: rgba(77, 163, 255, 0.15);
+
+  /* Deep near-black backgrounds */
+  --ifm-background-color: #0A0F1C;
+  --ifm-background-surface-color: #0E1428;
+
+  /* Soft off-white text */
+  --ifm-font-color-base: #E6E9F0;
+  --ifm-font-color-secondary: #AAB0C0;
+
+  /* Navbar and footer - deep dark */
+  --ifm-navbar-background-color: #0A0F1C;
+  --ifm-footer-background-color: #0A0F1C;
+
+  /* Elevated panels with contrast */
+  --ifm-card-background-color: #141C2F;
+  --ifm-color-emphasis-100: #141C2F;
+  --ifm-color-emphasis-200: #1A2440;
+  --ifm-color-emphasis-300: #242E4A;
+  --ifm-color-emphasis-400: #3A4566;
+  --ifm-color-emphasis-500: #5A6580;
+  --ifm-color-emphasis-600: #AAB0C0;
+
+  /* Glowing links */
+  --ifm-link-color: #4DA3FF;
+  --ifm-link-hover-color: #6CB5FF;
+
+  /* Code blocks - elevated */
+  --ifm-code-background: #141C2F;
+
+  /* Menu and sidebar */
+  --ifm-menu-color: #E6E9F0;
+  --ifm-menu-color-active: #4DA3FF;
+  --ifm-menu-color-background-active: rgba(77, 163, 255, 0.12);
+}
+
+/* =============================================
+   HERO SECTION STYLES
+   ============================================= */
+
+/* Light mode hero text - dark */
+.hero__title,
+.hero__subtitle {
+  color: #1F2937 !important;
+}
+
+/* Dark mode hero text - soft off-white */
+[data-theme='dark'] .hero__title,
+[data-theme='dark'] .hero__subtitle {
+  color: #E6E9F0 !important;
+}
+
+/* Light mode Start Learning button */
+.hero .button--secondary {
+  background-color: #2563EB;
+  border-color: #2563EB;
+  color: white;
+  font-weight: 600;
+}
+
+.hero .button--secondary:hover {
+  background-color: #1D4ED8;
+  border-color: #1D4ED8;
+  color: white;
+}
+
+/* Dark mode Start Learning button - glowing blue */
+[data-theme='dark'] .hero .button--secondary {
+  background-color: #4DA3FF;
+  border-color: #4DA3FF;
+  color: #0A0F1C;
+  box-shadow: 0 0 20px rgba(77, 163, 255, 0.3);
+}
+
+[data-theme='dark'] .hero .button--secondary:hover {
+  background-color: #6CB5FF;
+  border-color: #6CB5FF;
+  color: #0A0F1C;
+  box-shadow: 0 0 25px rgba(77, 163, 255, 0.4);
 }
 
 /* Code blocks - optimized for ROS 2 / Python readability */
@@ -118,7 +321,11 @@
    Dark/Light theme compatible
    =========================================== */
 
-/* Chatbot floating button */
+/* =============================================
+   CHATBOT TOGGLE BUTTON
+   ============================================= */
+
+/* Light mode chatbot button */
 .chatbot-toggle {
   position: fixed;
   bottom: 24px;
@@ -126,29 +333,50 @@
   width: 56px;
   height: 56px;
   border-radius: 50%;
-  background: var(--ifm-color-primary);
-  color: white;
+  background: #2563EB !important;
+  color: white !important;
   border: none;
   cursor: pointer;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 1000;
-  transition: transform 0.2s, box-shadow 0.2s;
+  transition: transform 0.2s, box-shadow 0.2s, background 0.2s;
 }
 
 .chatbot-toggle:hover {
   transform: scale(1.05);
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.25);
+  background: #1D4ED8 !important;
+  box-shadow: 0 6px 16px rgba(37, 99, 235, 0.4);
 }
 
 .chatbot-toggle:focus-visible {
-  outline: 3px solid var(--ifm-color-primary-light);
+  outline: 3px solid #3B82F6;
   outline-offset: 2px;
 }
 
-/* Chatbot modal container */
+/* Dark mode chatbot button - glowing */
+[data-theme='dark'] .chatbot-toggle {
+  background: #4DA3FF !important;
+  color: #0A0F1C !important;
+  box-shadow: 0 4px 20px rgba(77, 163, 255, 0.4);
+}
+
+[data-theme='dark'] .chatbot-toggle:hover {
+  background: #6CB5FF !important;
+  box-shadow: 0 6px 25px rgba(77, 163, 255, 0.5);
+}
+
+[data-theme='dark'] .chatbot-toggle:focus-visible {
+  outline-color: #4DA3FF;
+}
+
+/* =============================================
+   CHATBOT MODAL STYLES
+   ============================================= */
+
+/* Light mode chatbot modal */
 .chatbot-modal {
   position: fixed;
   bottom: 90px;
@@ -156,29 +384,38 @@
   width: 380px;
   max-width: calc(100vw - 48px);
   max-height: 500px;
-  background: var(--ifm-background-color);
-  border: 1px solid var(--ifm-color-emphasis-300);
+  background: #FFFFFF;
+  border: 1px solid #E5E7EB;
   border-radius: 12px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
   display: flex;
   flex-direction: column;
   z-index: 999;
   overflow: hidden;
 }
 
+/* Dark mode chatbot modal */
 [data-theme='dark'] .chatbot-modal {
-  border-color: var(--ifm-color-emphasis-400);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  background-color: #0E1428;
+  border-color: #242E4A;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
 }
 
-/* Chatbot header */
+/* Light mode chatbot header */
 .chatbot-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 12px 16px;
-  background: var(--ifm-color-primary);
+  background: #2563EB;
   color: white;
+}
+
+/* Dark mode chatbot header */
+[data-theme='dark'] .chatbot-header {
+  background: #141C2F;
+  border-bottom: 1px solid #242E4A;
+  color: #E6E9F0;
 }
 
 .chatbot-header h3 {
@@ -227,22 +464,33 @@
   line-height: 1.5;
 }
 
+/* Light mode user message */
 .chatbot-message--user {
   align-self: flex-end;
-  background: var(--ifm-color-primary);
+  background: #2563EB;
   color: white;
   border-bottom-right-radius: 4px;
 }
 
+/* Light mode assistant message */
 .chatbot-message--assistant {
   align-self: flex-start;
-  background: var(--ifm-color-emphasis-200);
-  color: var(--ifm-font-color-base);
+  background: #F3F4F6;
+  color: #1F2937;
   border-bottom-left-radius: 4px;
 }
 
+/* Dark mode user message */
+[data-theme='dark'] .chatbot-message--user {
+  background: #4DA3FF;
+  color: #0A0F1C;
+}
+
+/* Dark mode assistant message */
 [data-theme='dark'] .chatbot-message--assistant {
-  background: var(--ifm-color-emphasis-300);
+  background: #141C2F;
+  border: 1px solid #242E4A;
+  color: #E6E9F0;
 }
 
 /* Source citations in assistant messages */
@@ -257,7 +505,8 @@
 }
 
 [data-theme='dark'] .chatbot-citation {
-  background: rgba(77, 166, 255, 0.15);
+  background: rgba(77, 163, 255, 0.15);
+  color: #4DA3FF;
 }
 
 /* Grounding status indicator */
@@ -274,43 +523,55 @@
   color: var(--ifm-color-warning);
 }
 
-/* Chat input area */
+/* Light mode chat input area */
 .chatbot-input-area {
   display: flex;
   gap: 8px;
   padding: 12px;
-  border-top: 1px solid var(--ifm-color-emphasis-200);
-  background: var(--ifm-background-surface-color);
+  border-top: 1px solid #E5E7EB;
+  background: #F9FAFB;
 }
 
+/* Dark mode chat input area */
 [data-theme='dark'] .chatbot-input-area {
-  border-top-color: var(--ifm-color-emphasis-400);
+  border-top-color: #242E4A;
+  background-color: #0A0F1C;
 }
 
+/* Light mode chatbot input */
 .chatbot-input {
   flex: 1;
   padding: 10px 12px;
-  border: 1px solid var(--ifm-color-emphasis-300);
+  border: 1px solid #D1D5DB;
   border-radius: 8px;
   font-size: 14px;
-  background: var(--ifm-background-color);
-  color: var(--ifm-font-color-base);
+  background: #FFFFFF;
+  color: #1F2937;
   resize: none;
 }
 
 .chatbot-input:focus {
   outline: none;
-  border-color: var(--ifm-color-primary);
-  box-shadow: 0 0 0 2px rgba(0, 102, 204, 0.1);
+  border-color: #2563EB;
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.1);
+}
+
+/* Dark mode chatbot input */
+[data-theme='dark'] .chatbot-input {
+  background: #0E1428;
+  border-color: #242E4A;
+  color: #E6E9F0;
 }
 
 [data-theme='dark'] .chatbot-input:focus {
-  box-shadow: 0 0 0 2px rgba(77, 166, 255, 0.15);
+  border-color: #4DA3FF;
+  box-shadow: 0 0 0 2px rgba(77, 163, 255, 0.2);
 }
 
+/* Light mode submit button */
 .chatbot-submit {
   padding: 10px 16px;
-  background: var(--ifm-color-primary);
+  background: #2563EB;
   color: white;
   border: none;
   border-radius: 8px;
@@ -320,7 +581,7 @@
 }
 
 .chatbot-submit:hover:not(:disabled) {
-  background: var(--ifm-color-primary-dark);
+  background: #1D4ED8;
 }
 
 .chatbot-submit:disabled {
@@ -329,8 +590,22 @@
 }
 
 .chatbot-submit:focus-visible {
-  outline: 2px solid var(--ifm-color-primary-light);
+  outline: 2px solid #3B82F6;
   outline-offset: 2px;
+}
+
+/* Dark mode submit button - glowing */
+[data-theme='dark'] .chatbot-submit {
+  background: #4DA3FF;
+  color: #0A0F1C;
+}
+
+[data-theme='dark'] .chatbot-submit:hover:not(:disabled) {
+  background: #6CB5FF;
+}
+
+[data-theme='dark'] .chatbot-submit:focus-visible {
+  outline-color: #4DA3FF;
 }
 
 /* Loading indicator */
@@ -371,7 +646,59 @@
 }
 
 [data-theme='dark'] .chatbot-selected-text {
-  background: rgba(77, 166, 255, 0.1);
+  background: rgba(77, 163, 255, 0.1);
+  border-left-color: #4DA3FF;
+  color: #AAB0C0;
+}
+
+/* =============================================
+   FOOTER STYLES
+   ============================================= */
+
+/* Light mode footer - light gray */
+.footer,
+.footer--dark {
+  background-color: #F5F7FA !important;
+  border-top: 1px solid #E5E7EB;
+}
+
+.footer .footer__title {
+  color: #1F2937 !important;
+}
+
+.footer .footer__link-item {
+  color: #4B5563 !important;
+}
+
+.footer .footer__link-item:hover {
+  color: #2563EB !important;
+}
+
+.footer .footer__copyright {
+  color: #6B7280 !important;
+}
+
+/* Dark mode footer - deep dark */
+[data-theme='dark'] .footer,
+[data-theme='dark'] .footer--dark {
+  background-color: #0A0F1C !important;
+  border-top: 1px solid #242E4A;
+}
+
+[data-theme='dark'] .footer .footer__title {
+  color: #E6E9F0 !important;
+}
+
+[data-theme='dark'] .footer .footer__link-item {
+  color: #AAB0C0 !important;
+}
+
+[data-theme='dark'] .footer .footer__link-item:hover {
+  color: #4DA3FF !important;
+}
+
+[data-theme='dark'] .footer .footer__copyright {
+  color: #AAB0C0 !important;
 }
 
 /* Mobile responsive adjustments */

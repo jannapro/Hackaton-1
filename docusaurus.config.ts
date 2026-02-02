@@ -91,19 +91,7 @@ const config: Config = {
         alt: 'Physical Humanoid Robots Textbook Logo',
         src: 'img/logo.svg',
       },
-      items: [
-        {
-          type: 'docSidebar',
-          sidebarId: 'textbookSidebar',
-          position: 'left',
-          label: 'Textbook',
-        },
-        {
-          href: 'https://github.com/jannapro/physical-humanoid-robots-textbook',
-          label: 'GitHub',
-          position: 'right',
-        },
-      ],
+      items: [],
     },
 
     // T014: Footer configuration
