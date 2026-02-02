@@ -1,45 +1,20 @@
 /**
  * User Menu Component
  *
- * Shows user info and sign out option in the navbar.
- * Only visible when user is authenticated.
+ * Shows user name and sign out button in navbar.
  */
 
 import React, { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { useLanguage } from '../contexts/LanguageContext';
-
-const translations = {
-  en: {
-    signOut: 'Sign Out',
-    welcome: 'Welcome',
-  },
-  ur: {
-    signOut: 'سائن آؤٹ',
-    welcome: 'خوش آمدید',
-  },
-};
 
 export default function UserMenu(): JSX.Element | null {
   const { user, signOut } = useAuth();
-  const { language } = useLanguage();
   const [isOpen, setIsOpen] = useState(false);
-  const t = translations[language];
 
   if (!user) return null;
 
-  const displayName = user.displayName || user.email?.split('@')[0] || 'User';
-
-  const handleSignOut = async () => {
-    try {
-      await signOut();
-    } catch (err) {
-      console.error('Sign out error:', err);
-    }
-  };
-
   return (
-    <div style={{ position: 'relative', display: 'inline-block', marginRight: '8px' }}>
+    <div style={{ position: 'relative', marginRight: '8px' }}>
       <button
         onClick={() => setIsOpen(!isOpen)}
         style={{
@@ -54,13 +29,11 @@ export default function UserMenu(): JSX.Element | null {
           color: 'var(--ifm-navbar-link-color)',
           fontSize: '14px',
         }}
-        aria-label="User menu"
-        aria-expanded={isOpen}
       >
         <span
           style={{
-            width: '28px',
-            height: '28px',
+            width: '26px',
+            height: '26px',
             borderRadius: '50%',
             backgroundColor: 'var(--ifm-color-primary)',
             color: 'white',
@@ -71,12 +44,9 @@ export default function UserMenu(): JSX.Element | null {
             fontWeight: 600,
           }}
         >
-          {displayName.charAt(0).toUpperCase()}
+          {user.name.charAt(0).toUpperCase()}
         </span>
-        <span style={{ maxWidth: '100px', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-          {displayName}
-        </span>
-        <span style={{ fontSize: '10px' }}>▼</span>
+        <span>{user.name}</span>
       </button>
 
       {isOpen && (
@@ -92,22 +62,14 @@ export default function UserMenu(): JSX.Element | null {
               borderRadius: '6px',
               boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
               zIndex: 1000,
-              minWidth: '150px',
               overflow: 'hidden',
             }}
           >
-            <div
-              style={{
-                padding: '12px 14px',
-                borderBottom: '1px solid var(--ifm-color-emphasis-200)',
-                fontSize: '12px',
-                color: 'var(--ifm-color-emphasis-600)',
-              }}
-            >
+            <div style={{ padding: '10px 14px', fontSize: '12px', color: 'var(--ifm-color-emphasis-600)', borderBottom: '1px solid var(--ifm-color-emphasis-200)' }}>
               {user.email}
             </div>
             <button
-              onClick={handleSignOut}
+              onClick={() => { signOut(); setIsOpen(false); }}
               style={{
                 display: 'block',
                 width: '100%',
@@ -120,20 +82,11 @@ export default function UserMenu(): JSX.Element | null {
                 textAlign: 'left',
               }}
             >
-              {t.signOut}
+              Sign Out
             </button>
           </div>
-
-          {/* Click outside to close */}
           <div
-            style={{
-              position: 'fixed',
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              zIndex: 999,
-            }}
+            style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 999 }}
             onClick={() => setIsOpen(false)}
           />
         </>

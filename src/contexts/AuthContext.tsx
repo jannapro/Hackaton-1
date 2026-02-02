@@ -1,107 +1,112 @@
 /**
- * Authentication Context
+ * Simple Authentication Context
  *
- * Provides authentication state and methods throughout the app.
- * Uses Firebase Auth for email/password authentication.
+ * Basic login/signup using localStorage.
+ * Users must sign up and log in to access the book.
  */
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import {
-  auth,
-  createUserWithEmailAndPassword,
-  signInWithEmailAndPassword,
-  signOut as firebaseSignOut,
-  onAuthStateChanged,
-  sendPasswordResetEmail,
-  updateProfile,
-  type User,
-} from '../config/firebase';
+
+interface User {
+  email: string;
+  name: string;
+}
 
 interface AuthContextType {
   user: User | null;
   loading: boolean;
   error: string | null;
-  signUp: (email: string, password: string, displayName?: string) => Promise<void>;
-  signIn: (email: string, password: string) => Promise<void>;
-  signOut: () => Promise<void>;
-  resetPassword: (email: string) => Promise<void>;
+  signUp: (email: string, password: string, name: string) => void;
+  signIn: (email: string, password: string) => void;
+  signOut: () => void;
   clearError: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+// Storage keys
+const USERS_KEY = 'textbook_users';
+const CURRENT_USER_KEY = 'textbook_current_user';
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Listen for auth state changes
+  // Check for existing session on mount
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      setUser(user);
-      setLoading(false);
-    });
-
-    return () => unsubscribe();
+    const savedUser = localStorage.getItem(CURRENT_USER_KEY);
+    if (savedUser) {
+      setUser(JSON.parse(savedUser));
+    }
+    setLoading(false);
   }, []);
 
-  const signUp = async (email: string, password: string, displayName?: string) => {
-    try {
-      setError(null);
-      const result = await createUserWithEmailAndPassword(auth, email, password);
-      if (displayName && result.user) {
-        await updateProfile(result.user, { displayName });
-      }
-    } catch (err: any) {
-      setError(getErrorMessage(err.code));
-      throw err;
-    }
+  const getUsers = (): Record<string, { password: string; name: string }> => {
+    const users = localStorage.getItem(USERS_KEY);
+    return users ? JSON.parse(users) : {};
   };
 
-  const signIn = async (email: string, password: string) => {
-    try {
-      setError(null);
-      await signInWithEmailAndPassword(auth, email, password);
-    } catch (err: any) {
-      setError(getErrorMessage(err.code));
-      throw err;
-    }
+  const saveUsers = (users: Record<string, { password: string; name: string }>) => {
+    localStorage.setItem(USERS_KEY, JSON.stringify(users));
   };
 
-  const signOut = async () => {
-    try {
-      setError(null);
-      await firebaseSignOut(auth);
-    } catch (err: any) {
-      setError(getErrorMessage(err.code));
-      throw err;
+  const signUp = (email: string, password: string, name: string) => {
+    setError(null);
+    const users = getUsers();
+
+    if (users[email]) {
+      setError('This email is already registered. Please sign in.');
+      return;
     }
+
+    if (password.length < 6) {
+      setError('Password must be at least 6 characters.');
+      return;
+    }
+
+    // Save new user
+    users[email] = { password, name };
+    saveUsers(users);
+
+    // Log in the new user
+    const newUser = { email, name };
+    setUser(newUser);
+    localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(newUser));
   };
 
-  const resetPassword = async (email: string) => {
-    try {
-      setError(null);
-      await sendPasswordResetEmail(auth, email);
-    } catch (err: any) {
-      setError(getErrorMessage(err.code));
-      throw err;
+  const signIn = (email: string, password: string) => {
+    setError(null);
+    const users = getUsers();
+
+    if (!users[email]) {
+      setError('No account found with this email.');
+      return;
     }
+
+    if (users[email].password !== password) {
+      setError('Incorrect password.');
+      return;
+    }
+
+    // Log in
+    const loggedInUser = { email, name: users[email].name };
+    setUser(loggedInUser);
+    localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(loggedInUser));
+  };
+
+  const signOut = () => {
+    setUser(null);
+    localStorage.removeItem(CURRENT_USER_KEY);
   };
 
   const clearError = () => setError(null);
 
-  const value: AuthContextType = {
-    user,
-    loading,
-    error,
-    signUp,
-    signIn,
-    signOut,
-    resetPassword,
-    clearError,
-  };
-
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+  return (
+    <AuthContext.Provider value={{ user, loading, error, signUp, signIn, signOut, clearError }}>
+      {children}
+    </AuthContext.Provider>
+  );
 }
 
 export function useAuth(): AuthContextType {
@@ -110,32 +115,6 @@ export function useAuth(): AuthContextType {
     throw new Error('useAuth must be used within an AuthProvider');
   }
   return context;
-}
-
-// Convert Firebase error codes to user-friendly messages
-function getErrorMessage(code: string): string {
-  switch (code) {
-    case 'auth/email-already-in-use':
-      return 'This email is already registered. Please sign in instead.';
-    case 'auth/invalid-email':
-      return 'Please enter a valid email address.';
-    case 'auth/operation-not-allowed':
-      return 'Email/password sign-in is not enabled.';
-    case 'auth/weak-password':
-      return 'Password should be at least 6 characters.';
-    case 'auth/user-disabled':
-      return 'This account has been disabled.';
-    case 'auth/user-not-found':
-      return 'No account found with this email.';
-    case 'auth/wrong-password':
-      return 'Incorrect password. Please try again.';
-    case 'auth/invalid-credential':
-      return 'Invalid email or password.';
-    case 'auth/too-many-requests':
-      return 'Too many failed attempts. Please try again later.';
-    default:
-      return 'An error occurred. Please try again.';
-  }
 }
 
 export default AuthContext;
