@@ -8,3 +8,6 @@ export { default as Quiz } from './Quiz';
 export { default as CollapsibleSection } from './CollapsibleSection';
 export { default as ChatbotWidget } from './ChatbotWidget';
 export { default as LanguageSwitcher } from './LanguageSwitcher';
+export { default as AuthPage } from './AuthPage';
+export { default as ProtectedRoute } from './ProtectedRoute';
+export { default as UserMenu } from './UserMenu';
