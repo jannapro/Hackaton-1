@@ -1,13 +1,14 @@
 /**
  * Custom Language Switcher Component
  *
- * Works in both development and production modes.
- * - In dev mode: switches language context (affects chatbot)
- * - In production: navigates to locale-specific URL
+ * Uses Docusaurus's built-in locale URL generation to navigate
+ * between English and Urdu versions of each page.
  */
 
 import React, { useState, useEffect } from 'react';
 import { useLanguage, type Language } from '../contexts/LanguageContext';
+import useDocusaurusContext from '@docusaurus/useDocusaurusContext';
+import { useAlternatePageUtils } from '@docusaurus/theme-common/internal';
 
 const languages: { code: Language; label: string; flag: string }[] = [
   { code: 'en', label: 'English', flag: '🇺🇸' },
@@ -15,42 +16,36 @@ const languages: { code: Language; label: string; flag: string }[] = [
 ];
 
 export default function LanguageSwitcher(): JSX.Element {
-  const { language, setLanguage } = useLanguage();
+  const { setLanguage } = useLanguage();
+  const { i18n: { currentLocale } } = useDocusaurusContext();
+  const alternatePageUtils = useAlternatePageUtils();
   const [isOpen, setIsOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
 
-  // Handle hydration mismatch
   useEffect(() => {
     setMounted(true);
   }, []);
 
-  const currentLang = languages.find((l) => l.code === language) || languages[0];
+  const currentLang = languages.find((l) => l.code === currentLocale) || languages[0];
 
   const handleLanguageChange = (langCode: Language) => {
+    if (langCode === currentLocale) {
+      setIsOpen(false);
+      return;
+    }
+
     setLanguage(langCode);
     setIsOpen(false);
 
-    // Store in localStorage for persistence
     if (typeof window !== 'undefined') {
       localStorage.setItem('docusaurus.locale', langCode);
-    }
 
-    // In production, navigate to locale URL
-    if (typeof window !== 'undefined' && process.env.NODE_ENV === 'production') {
-      const currentPath = window.location.pathname;
-      const baseUrl = '/physical-humanoid-robots-textbook';
-
-      // Remove existing locale prefix and base URL
-      let cleanPath = currentPath.replace(baseUrl, '');
-      cleanPath = cleanPath.replace(/^\/(en|ur)/, '');
-      if (!cleanPath.startsWith('/')) cleanPath = '/' + cleanPath;
-
-      // Build new URL with locale
-      const newPath = langCode === 'en'
-        ? `${baseUrl}${cleanPath}`
-        : `${baseUrl}/${langCode}${cleanPath}`;
-
-      window.location.href = newPath;
+      // Navigate to the locale-specific URL using Docusaurus's built-in utility
+      const url = alternatePageUtils.createUrl({
+        locale: langCode,
+        fullyQualified: false,
+      });
+      window.location.href = url;
     }
   };
 
@@ -109,7 +104,7 @@ export default function LanguageSwitcher(): JSX.Element {
                 gap: '8px',
                 width: '100%',
                 padding: '10px 14px',
-                backgroundColor: lang.code === language
+                backgroundColor: lang.code === currentLocale
                   ? 'var(--ifm-color-primary-lightest)'
                   : 'transparent',
                 border: 'none',
@@ -121,7 +116,7 @@ export default function LanguageSwitcher(): JSX.Element {
             >
               <span>{lang.flag}</span>
               <span>{lang.label}</span>
-              {lang.code === language && <span style={{ marginLeft: 'auto' }}>✓</span>}
+              {lang.code === currentLocale && <span style={{ marginLeft: 'auto' }}>✓</span>}
             </button>
           ))}
         </div>

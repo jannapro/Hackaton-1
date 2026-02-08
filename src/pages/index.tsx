@@ -1,6 +1,7 @@
 import type {ReactNode} from 'react';
 import {useEffect, useRef, useState} from 'react';
 import clsx from 'clsx';
+/* Note: useEffect/useState still used by ParticleNetwork, Features, Modules */
 import Link from '@docusaurus/Link';
 import useDocusaurusContext from '@docusaurus/useDocusaurusContext';
 import Layout from '@theme/Layout';
@@ -136,11 +137,6 @@ function FloatingShapes() {
 
 function HomepageHeader() {
   const {siteConfig} = useDocusaurusContext();
-  const [isVisible, setIsVisible] = useState(false);
-
-  useEffect(() => {
-    setIsVisible(true);
-  }, []);
 
   return (
     <header className={clsx('hero', styles.heroBanner)}>
@@ -149,20 +145,20 @@ function HomepageHeader() {
       <FloatingShapes />
 
       <div className={clsx('container', styles.heroContent)}>
-        <div className={clsx(styles.badge, isVisible && styles.badgeVisible)}>
+        <div className={styles.badge}>
           <span className={styles.badgeGlow}></span>
           <span className={styles.badgeText}>AI-NATIVE TEXTBOOK</span>
         </div>
 
-        <Heading as="h1" className={clsx(styles.heroTitle, isVisible && styles.titleVisible)}>
+        <Heading as="h1" className={styles.heroTitle}>
           {siteConfig.title}
         </Heading>
 
-        <p className={clsx(styles.heroSubtitle, isVisible && styles.subtitleVisible)}>
+        <p className={styles.heroSubtitle}>
           {siteConfig.tagline}
         </p>
 
-        <div className={clsx(styles.buttons, isVisible && styles.buttonsVisible)}>
+        <div className={styles.buttons}>
           <Link
             className={styles.ctaButton}
             to="/docs/intro">

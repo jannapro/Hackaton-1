@@ -117,6 +117,18 @@
   z-index: 10;
 }
 
+/* Fade-in-up animation */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 /* AI-Native Badge */
 .badge {
   display: inline-flex;
@@ -128,14 +140,7 @@
   margin-bottom: 16px;
   position: relative;
   overflow: hidden;
-  opacity: 0;
-  transform: translateY(20px);
-  transition: all 0.6s ease;
-}
-
-.badgeVisible {
-  opacity: 1;
-  transform: translateY(0);
+  animation: fadeInUp 0.6s ease both;
 }
 
 .badgeGlow {
@@ -174,16 +179,9 @@
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
+  color: #00d4ff;
   margin-bottom: 16px;
-  animation: gradientShift 5s ease-in-out infinite;
-  opacity: 0;
-  transform: translateY(30px);
-  transition: all 0.8s ease 0.2s;
-}
-
-.titleVisible {
-  opacity: 1;
-  transform: translateY(0);
+  animation: fadeInUp 0.8s ease 0.2s both, gradientShift 5s ease-in-out 1s infinite;
 }
 
 @keyframes gradientShift {
@@ -203,14 +201,7 @@
   margin-left: auto;
   margin-right: auto;
   line-height: 1.6;
-  opacity: 0;
-  transform: translateY(30px);
-  transition: all 0.8s ease 0.4s;
-}
-
-.subtitleVisible {
-  opacity: 1;
-  transform: translateY(0);
+  animation: fadeInUp 0.8s ease 0.4s both;
 }
 
 /* CTA Button */
@@ -218,14 +209,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  opacity: 0;
-  transform: translateY(30px);
-  transition: all 0.8s ease 0.6s;
-}
-
-.buttonsVisible {
-  opacity: 1;
-  transform: translateY(0);
+  animation: fadeInUp 0.8s ease 0.6s both;
 }
 
 .ctaButton {
@@ -576,6 +560,7 @@
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
+  color: #1f2937;
 }
 
 :global([data-theme='light']) .heroSubtitle {

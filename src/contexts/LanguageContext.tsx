@@ -1,12 +1,12 @@
 /**
  * Language Context for multilingual support.
  *
- * Provides language state across the app.
- * Works in both dev mode and production.
- * The chatbot uses this to know which language to respond in.
+ * Syncs with Docusaurus's i18n locale system.
+ * The chatbot and other components use this for translated labels.
  */
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import useDocusaurusContext from '@docusaurus/useDocusaurusContext';
 
 export type Language = 'en' | 'ur';
 
@@ -48,38 +48,21 @@ const translations = {
 
 const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
 
-// Get initial language from localStorage or URL
-function getInitialLanguage(): Language {
-  if (typeof window === 'undefined') return 'en';
-
-  // Check localStorage first
-  const stored = localStorage.getItem('docusaurus.locale') as Language;
-  if (stored && (stored === 'en' || stored === 'ur')) {
-    return stored;
-  }
-
-  // Check URL for locale
-  const path = window.location.pathname;
-  if (path.includes('/ur/') || path.startsWith('/ur')) {
-    return 'ur';
-  }
-
-  return 'en';
-}
-
 export function LanguageProvider({ children }: { children: ReactNode }) {
-  const [language, setLanguageState] = useState<Language>('en');
+  const { i18n: { currentLocale } } = useDocusaurusContext();
+  const locale: Language = currentLocale === 'ur' ? 'ur' : 'en';
+
+  const [language, setLanguageState] = useState<Language>(locale);
   const [mounted, setMounted] = useState(false);
 
-  // Initialize language on mount (client-side only)
+  // Sync with Docusaurus locale
   useEffect(() => {
-    setLanguageState(getInitialLanguage());
+    setLanguageState(locale);
     setMounted(true);
-  }, []);
+  }, [locale]);
 
   const setLanguage = (lang: Language) => {
     setLanguageState(lang);
-    // Store preference in localStorage
     if (typeof window !== 'undefined') {
       localStorage.setItem('docusaurus.locale', lang);
     }
