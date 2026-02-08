@@ -1,0 +1,38 @@
+{
+  "version.label": {
+    "message": "موجودہ",
+    "description": "The label for the current docs version"
+  },
+  "sidebar.textbookSidebar.category.Physical AI Foundations": {
+    "message": "Physical AI کی بنیادیں",
+    "description": "The label for the sidebar category"
+  },
+  "sidebar.textbookSidebar.category.ROS 2": {
+    "message": "ROS 2",
+    "description": "The label for the sidebar category"
+  },
+  "sidebar.textbookSidebar.category.Digital Twins": {
+    "message": "ڈیجیٹل ٹونز",
+    "description": "The label for the sidebar category"
+  },
+  "sidebar.textbookSidebar.category.NVIDIA Isaac": {
+    "message": "NVIDIA Isaac",
+    "description": "The label for the sidebar category"
+  },
+  "sidebar.textbookSidebar.category.Vision-Language-Action": {
+    "message": "Vision-Language-Action",
+    "description": "The label for the sidebar category"
+  },
+  "sidebar.textbookSidebar.category.Humanoid Locomotion": {
+    "message": "ہیومنائیڈ حرکت",
+    "description": "The label for the sidebar category"
+  },
+  "sidebar.textbookSidebar.category.Conversational Robotics": {
+    "message": "گفتگو کرنے والی روبوٹکس",
+    "description": "The label for the sidebar category"
+  },
+  "sidebar.textbookSidebar.category.Capstone": {
+    "message": "Capstone",
+    "description": "The label for the sidebar category"
+  }
+}

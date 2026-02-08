@@ -1,0 +1,946 @@
+---
+id: "ros2-robotic-nervous-system"
+title: "ROS 2: The Robotic Nervous System"
+sidebar_label: "2. ROS 2"
+sidebar_position: 1
+keywords:
+  - ROS 2
+  - rclpy
+  - nodes
+  - topics
+  - services
+  - actions
+  - DDS
+  - QoS
+description: "ROS 2 fundamentals: nodes, topics, services, actions, and Python rclpy programming for humanoid robotics."
+---
+
+import { Quiz, CodePlayground, CollapsibleSection } from '@site/src/components';
+
+# ROS 2: The Robotic Nervous System
+
+ROS 2 (Robot Operating System 2) is the middleware that connects the components of a robotic system. Like a biological nervous system, it enables sensors, processors, and actuators to communicate and coordinate. This chapter covers the fundamental concepts and patterns you need to build robot software with ROS 2.
+
+## Learning Objectives
+
+By the end of this chapter, you will be able to:
+
+1. **[LO-01]**: Explain the ROS 2 computation graph and how nodes communicate through topics, services, and actions (Bloom's: Understand)
+2. **[LO-02]**: Implement publisher and subscriber nodes using rclpy to exchange sensor and command data (Bloom's: Apply)
+3. **[LO-03]**: Create service servers and clients for synchronous request/response communication (Bloom's: Apply)
+4. **[LO-04]**: Build action servers and clients for long-running tasks with feedback and cancellation (Bloom's: Apply)
+5. **[LO-05]**: Diagnose common ROS 2 communication failures including DDS configuration, QoS mismatches, and namespace conflicts (Bloom's: Analyze)
+
+---
+
+## System Architecture
+
+The ROS 2 computation graph is a network of nodes connected by communication primitives. Each node is an independent process that performs a specific function.
+
+<!-- Architecture diagram placeholder - to be added during chapter authoring -->
+
+**Core Components**:
+
+| Component | Purpose | Example |
+|-----------|---------|---------|
+| Node | Independent computational unit | Camera driver, path planner, motor controller |
+| Topic | Named bus for streaming data (pub/sub) | `/camera/image`, `/cmd_vel`, `/joint_states` |
+| Service | Synchronous request/response | `/spawn`, `/set_parameters` |
+| Action | Asynchronous goal with feedback | `/navigate_to_pose`, `/follow_joint_trajectory` |
+| Parameter | Runtime configuration values | `max_velocity`, `camera_fps` |
+
+**Communication Patterns**:
+
+| Pattern | When to Use | Latency | Feedback |
+|---------|-------------|---------|----------|
+| Topic | Continuous data streams, sensor data | Low | None |
+| Service | One-time requests, configuration | Medium | None (blocking) |
+| Action | Long-running tasks, motion goals | Variable | Yes (progress updates) |
+
+---
+
+## The Computation Graph
+
+The computation graph is the runtime network of ROS 2 nodes and their connections. Understanding this graph is essential for debugging and designing robot systems.
+
+### Nodes
+
+A node is the fundamental unit of computation in ROS 2. Each node should have a single, well-defined purpose:
+
+- **Sensor nodes**: Read hardware and publish data (`camera_node`, `lidar_node`)
+- **Processing nodes**: Transform data (`image_processor`, `point_cloud_filter`)
+- **Control nodes**: Generate commands (`trajectory_controller`, `behavior_tree`)
+- **Actuator nodes**: Command hardware (`motor_driver`, `gripper_controller`)
+
+Nodes are processes that can run on the same machine or distributed across a network. The DDS (Data Distribution Service) middleware handles discovery and communication transparently.
+
+### Topics and Messages
+
+Topics are named channels for publishing and subscribing to messages. They implement the publish-subscribe pattern:
+
+- **Publishers** send messages to a topic
+- **Subscribers** receive messages from a topic
+- **Multiple publishers and subscribers** can share a single topic
+- **Messages are typed** using interface definitions (`.msg` files)
+
+Common message types for robotics:
+
+| Package | Message | Use Case |
+|---------|---------|----------|
+| `std_msgs` | `String`, `Int32`, `Float64` | Simple data types |
+| `geometry_msgs` | `Twist`, `Pose`, `Transform` | Position, velocity, orientation |
+| `sensor_msgs` | `Image`, `LaserScan`, `Imu` | Sensor data |
+| `nav_msgs` | `Odometry`, `Path`, `OccupancyGrid` | Navigation |
+
+### Quality of Service (QoS)
+
+QoS policies control how messages are delivered. Mismatched QoS between publishers and subscribers is a common source of communication failures.
+
+**Key QoS Policies**:
+
+| Policy | Options | Default | When to Change |
+|--------|---------|---------|----------------|
+| Reliability | `RELIABLE`, `BEST_EFFORT` | `RELIABLE` | Use `BEST_EFFORT` for high-frequency sensor data |
+| Durability | `VOLATILE`, `TRANSIENT_LOCAL` | `VOLATILE` | Use `TRANSIENT_LOCAL` for late-joining subscribers |
+| History | `KEEP_LAST(n)`, `KEEP_ALL` | `KEEP_LAST(10)` | Increase depth for bursty data |
+
+```python
+from rclpy.qos import QoSProfile, ReliabilityPolicy, DurabilityPolicy
+
+# QoS for sensor data (best effort, volatile)
+sensor_qos = QoSProfile(
+    reliability=ReliabilityPolicy.BEST_EFFORT,
+    durability=DurabilityPolicy.VOLATILE,
+    depth=10
+)
+
+# QoS for commands (reliable)
+command_qos = QoSProfile(
+    reliability=ReliabilityPolicy.RELIABLE,
+    durability=DurabilityPolicy.VOLATILE,
+    depth=10
+)
+```
+
+---
+
+## Publishers and Subscribers
+
+The publish-subscribe pattern is the most common communication mechanism in ROS 2. Publishers send data without knowing who receives it; subscribers receive data without knowing who sent it.
+
+### Creating a Publisher
+
+Publishers periodically or event-driven send messages to a topic:
+
+```python
+#!/usr/bin/env python3
+"""
+ROS 2 Publisher Example: Velocity Commander
+
+Publishes Twist messages to control robot movement.
+Demonstrates timer-based publishing pattern.
+
+Requirements:
+- ROS 2 Humble or Iron
+- geometry_msgs package
+
+Run with:
+  ros2 run my_robot_pkg velocity_publisher
+"""
+
+import rclpy
+from rclpy.node import Node
+from geometry_msgs.msg import Twist
+
+
+class VelocityPublisher(Node):
+    """Publishes velocity commands at a fixed rate."""
+
+    def __init__(self):
+        super().__init__('velocity_publisher')
+
+        # Declare parameters with defaults
+        self.declare_parameter('linear_speed', 0.5)
+        self.declare_parameter('angular_speed', 0.0)
+        self.declare_parameter('publish_rate', 10.0)
+
+        # Create publisher
+        self.publisher = self.create_publisher(
+            Twist,
+            '/cmd_vel',
+            10  # QoS depth
+        )
+
+        # Create timer for periodic publishing
+        rate = self.get_parameter('publish_rate').value
+        self.timer = self.create_timer(1.0 / rate, self.publish_velocity)
+
+        self.get_logger().info('Velocity publisher started')
+
+    def publish_velocity(self):
+        """Timer callback: publish current velocity command."""
+        msg = Twist()
+        msg.linear.x = self.get_parameter('linear_speed').value
+        msg.angular.z = self.get_parameter('angular_speed').value
+
+        self.publisher.publish(msg)
+        self.get_logger().debug(
+            f'Publishing: linear={msg.linear.x:.2f}, angular={msg.angular.z:.2f}'
+        )
+
+
+def main(args=None):
+    rclpy.init(args=args)
+    node = VelocityPublisher()
+
+    try:
+        rclpy.spin(node)
+    except KeyboardInterrupt:
+        pass
+    finally:
+        node.destroy_node()
+        rclpy.shutdown()
+
+
+if __name__ == '__main__':
+    main()
+```
+
+### Creating a Subscriber
+
+Subscribers receive messages asynchronously through callbacks:
+
+```python
+#!/usr/bin/env python3
+"""
+ROS 2 Subscriber Example: Odometry Monitor
+
+Subscribes to odometry messages and tracks robot position.
+Demonstrates callback-based message handling.
+
+Requirements:
+- ROS 2 Humble or Iron
+- nav_msgs package
+
+Run with:
+  ros2 run my_robot_pkg odometry_subscriber
+"""
+
+import rclpy
+from rclpy.node import Node
+from nav_msgs.msg import Odometry
+import math
+
+
+class OdometrySubscriber(Node):
+    """Monitors robot odometry and computes distance traveled."""
+
+    def __init__(self):
+        super().__init__('odometry_subscriber')
+
+        # State tracking
+        self.initial_position = None
+        self.total_distance = 0.0
+        self.last_position = None
+
+        # Create subscription
+        self.subscription = self.create_subscription(
+            Odometry,
+            '/odom',
+            self.odometry_callback,
+            10
+        )
+
+        self.get_logger().info('Odometry subscriber started')
+
+    def odometry_callback(self, msg: Odometry):
+        """Process incoming odometry message."""
+        current_x = msg.pose.pose.position.x
+        current_y = msg.pose.pose.position.y
+
+        # Store initial position
+        if self.initial_position is None:
+            self.initial_position = (current_x, current_y)
+            self.last_position = (current_x, current_y)
+            return
+
+        # Compute incremental distance
+        dx = current_x - self.last_position[0]
+        dy = current_y - self.last_position[1]
+        distance = math.sqrt(dx**2 + dy**2)
+
+        self.total_distance += distance
+        self.last_position = (current_x, current_y)
+
+        # Log periodically (every 1 meter)
+        if int(self.total_distance) > int(self.total_distance - distance):
+            self.get_logger().info(
+                f'Distance traveled: {self.total_distance:.2f} m'
+            )
+
+
+def main(args=None):
+    rclpy.init(args=args)
+    node = OdometrySubscriber()
+
+    try:
+        rclpy.spin(node)
+    except KeyboardInterrupt:
+        pass
+    finally:
+        node.get_logger().info(
+            f'Total distance: {node.total_distance:.2f} m'
+        )
+        node.destroy_node()
+        rclpy.shutdown()
+
+
+if __name__ == '__main__':
+    main()
+```
+
+---
+
+## Services
+
+Services implement synchronous request-response communication. A client sends a request and blocks until receiving a response. Use services for one-time operations like configuration or triggering actions.
+
+### Service Definition
+
+Services are defined in `.srv` files with request and response sections:
+
+```text
+# SetSpeed.srv
+float64 linear_speed
+float64 angular_speed
+---
+bool success
+string message
+```
+
+### Service Server
+
+```python
+#!/usr/bin/env python3
+"""
+ROS 2 Service Server Example: Speed Configuration
+
+Provides a service to configure robot speed limits.
+Demonstrates service server pattern with validation.
+
+Requirements:
+- ROS 2 Humble or Iron
+- Custom service interface (or use std_srvs)
+
+Run with:
+  ros2 run my_robot_pkg speed_service_server
+"""
+
+import rclpy
+from rclpy.node import Node
+from std_srvs.srv import SetBool
+
+
+class SpeedServiceServer(Node):
+    """Service server for enabling/disabling high-speed mode."""
+
+    def __init__(self):
+        super().__init__('speed_service_server')
+
+        self.high_speed_enabled = False
+        self.normal_speed = 0.5
+        self.high_speed = 1.5
+
+        # Create service
+        self.service = self.create_service(
+            SetBool,
+            '/set_high_speed',
+            self.set_high_speed_callback
+        )
+
+        self.get_logger().info('Speed service server ready')
+
+    def set_high_speed_callback(self, request, response):
+        """Handle speed mode change request."""
+        self.high_speed_enabled = request.data
+
+        if self.high_speed_enabled:
+            current_speed = self.high_speed
+            response.success = True
+            response.message = f'High speed mode enabled: {current_speed} m/s'
+        else:
+            current_speed = self.normal_speed
+            response.success = True
+            response.message = f'Normal speed mode: {current_speed} m/s'
+
+        self.get_logger().info(response.message)
+        return response
+
+
+def main(args=None):
+    rclpy.init(args=args)
+    node = SpeedServiceServer()
+
+    try:
+        rclpy.spin(node)
+    except KeyboardInterrupt:
+        pass
+    finally:
+        node.destroy_node()
+        rclpy.shutdown()
+
+
+if __name__ == '__main__':
+    main()
+```
+
+### Service Client
+
+```python
+#!/usr/bin/env python3
+"""
+ROS 2 Service Client Example
+
+Demonstrates synchronous service call with timeout handling.
+"""
+
+import rclpy
+from rclpy.node import Node
+from std_srvs.srv import SetBool
+
+
+class SpeedServiceClient(Node):
+    """Client for the speed configuration service."""
+
+    def __init__(self):
+        super().__init__('speed_service_client')
+        self.client = self.create_client(SetBool, '/set_high_speed')
+
+        # Wait for service to be available
+        while not self.client.wait_for_service(timeout_sec=1.0):
+            self.get_logger().info('Waiting for service...')
+
+    def set_high_speed(self, enable: bool) -> bool:
+        """Send request to enable/disable high speed mode."""
+        request = SetBool.Request()
+        request.data = enable
+
+        # Synchronous call with timeout
+        future = self.client.call_async(request)
+        rclpy.spin_until_future_complete(self, future, timeout_sec=5.0)
+
+        if future.result() is not None:
+            response = future.result()
+            self.get_logger().info(f'Response: {response.message}')
+            return response.success
+        else:
+            self.get_logger().error('Service call failed')
+            return False
+
+
+def main(args=None):
+    rclpy.init(args=args)
+    client = SpeedServiceClient()
+
+    # Enable high speed mode
+    success = client.set_high_speed(True)
+    print(f'High speed enabled: {success}')
+
+    client.destroy_node()
+    rclpy.shutdown()
+
+
+if __name__ == '__main__':
+    main()
+```
+
+---
+
+## Actions
+
+Actions are for long-running tasks that need feedback and cancellation support. Unlike services, actions are asynchronous and provide progress updates during execution.
+
+### Action Components
+
+An action consists of three parts:
+
+1. **Goal**: What the client wants to achieve
+2. **Feedback**: Progress updates during execution
+3. **Result**: Final outcome when complete
+
+### Action Server
+
+```python
+#!/usr/bin/env python3
+"""
+ROS 2 Action Server Example: Navigate to Point
+
+Demonstrates action server with goal handling, feedback, and cancellation.
+
+Requirements:
+- ROS 2 Humble or Iron
+- nav2_msgs or custom action interface
+
+Run with:
+  ros2 run my_robot_pkg navigate_action_server
+"""
+
+import time
+import math
+
+import rclpy
+from rclpy.action import ActionServer, CancelResponse, GoalResponse
+from rclpy.node import Node
+from rclpy.callback_groups import ReentrantCallbackGroup
+from rclpy.executors import MultiThreadedExecutor
+
+from geometry_msgs.msg import Point
+from action_tutorials_interfaces.action import Fibonacci  # Example action
+
+
+class NavigateActionServer(Node):
+    """Action server for point-to-point navigation."""
+
+    def __init__(self):
+        super().__init__('navigate_action_server')
+
+        self._action_server = ActionServer(
+            self,
+            Fibonacci,  # Using Fibonacci as example
+            'navigate',
+            execute_callback=self.execute_callback,
+            goal_callback=self.goal_callback,
+            cancel_callback=self.cancel_callback,
+            callback_group=ReentrantCallbackGroup()
+        )
+
+        self.get_logger().info('Navigate action server ready')
+
+    def goal_callback(self, goal_request):
+        """Decide whether to accept or reject a goal."""
+        self.get_logger().info('Received goal request')
+        return GoalResponse.ACCEPT
+
+    def cancel_callback(self, goal_handle):
+        """Decide whether to accept cancellation request."""
+        self.get_logger().info('Received cancel request')
+        return CancelResponse.ACCEPT
+
+    async def execute_callback(self, goal_handle):
+        """Execute the navigation goal with feedback."""
+        self.get_logger().info('Executing goal...')
+
+        feedback_msg = Fibonacci.Feedback()
+        feedback_msg.partial_sequence = [0, 1]
+
+        # Simulate navigation with progress updates
+        for i in range(1, goal_handle.request.order):
+            # Check for cancellation
+            if goal_handle.is_cancel_requested:
+                goal_handle.canceled()
+                self.get_logger().info('Goal canceled')
+                return Fibonacci.Result()
+
+            # Compute next value (simulating progress)
+            feedback_msg.partial_sequence.append(
+                feedback_msg.partial_sequence[i] +
+                feedback_msg.partial_sequence[i - 1]
+            )
+
+            # Publish feedback
+            goal_handle.publish_feedback(feedback_msg)
+            self.get_logger().info(
+                f'Progress: {i}/{goal_handle.request.order}'
+            )
+
+            # Simulate work
+            time.sleep(0.5)
+
+        # Mark goal as succeeded
+        goal_handle.succeed()
+
+        # Return result
+        result = Fibonacci.Result()
+        result.sequence = feedback_msg.partial_sequence
+        self.get_logger().info('Goal succeeded')
+        return result
+
+
+def main(args=None):
+    rclpy.init(args=args)
+    node = NavigateActionServer()
+
+    executor = MultiThreadedExecutor()
+    executor.add_node(node)
+
+    try:
+        executor.spin()
+    except KeyboardInterrupt:
+        pass
+    finally:
+        node.destroy_node()
+        rclpy.shutdown()
+
+
+if __name__ == '__main__':
+    main()
+```
+
+### Action Client
+
+```python
+#!/usr/bin/env python3
+"""
+ROS 2 Action Client Example: Navigation Client
+
+Demonstrates sending goals, receiving feedback, and handling results.
+
+Requirements:
+- ROS 2 Humble or Iron
+
+Run with:
+  ros2 run my_robot_pkg navigate_action_client
+"""
+
+import rclpy
+from rclpy.action import ActionClient
+from rclpy.node import Node
+from action_tutorials_interfaces.action import Fibonacci
+
+
+class NavigateActionClient(Node):
+    """Action client for navigation goals."""
+
+    def __init__(self):
+        super().__init__('navigate_action_client')
+        self._action_client = ActionClient(
+            self,
+            Fibonacci,
+            'navigate'
+        )
+
+    def send_goal(self, order: int):
+        """Send navigation goal and wait for result."""
+        goal_msg = Fibonacci.Goal()
+        goal_msg.order = order
+
+        self.get_logger().info('Waiting for action server...')
+        self._action_client.wait_for_server()
+
+        self.get_logger().info(f'Sending goal: order={order}')
+        send_goal_future = self._action_client.send_goal_async(
+            goal_msg,
+            feedback_callback=self.feedback_callback
+        )
+        send_goal_future.add_done_callback(self.goal_response_callback)
+
+    def goal_response_callback(self, future):
+        """Handle goal acceptance/rejection."""
+        goal_handle = future.result()
+
+        if not goal_handle.accepted:
+            self.get_logger().info('Goal rejected')
+            return
+
+        self.get_logger().info('Goal accepted')
+        result_future = goal_handle.get_result_async()
+        result_future.add_done_callback(self.result_callback)
+
+    def feedback_callback(self, feedback_msg):
+        """Handle feedback during execution."""
+        sequence = feedback_msg.feedback.partial_sequence
+        self.get_logger().info(f'Feedback: {sequence}')
+
+    def result_callback(self, future):
+        """Handle final result."""
+        result = future.result().result
+        self.get_logger().info(f'Result: {result.sequence}')
+        rclpy.shutdown()
+
+
+def main(args=None):
+    rclpy.init(args=args)
+    client = NavigateActionClient()
+
+    client.send_goal(10)
+
+    rclpy.spin(client)
+
+
+if __name__ == '__main__':
+    main()
+```
+
+---
+
+## Practical Implementation
+
+### Setting Up a ROS 2 Workspace
+
+```bash
+# Create workspace
+mkdir -p ~/ros2_ws/src
+cd ~/ros2_ws/src
+
+# Create Python package
+ros2 pkg create --build-type ament_python my_robot_pkg \
+    --dependencies rclpy std_msgs geometry_msgs sensor_msgs
+
+# Add nodes to setup.py entry_points
+# Edit my_robot_pkg/setup.py
+
+# Build workspace
+cd ~/ros2_ws
+colcon build --packages-select my_robot_pkg
+source install/setup.bash
+```
+
+### Useful CLI Commands
+
+<CollapsibleSection title="Essential ROS 2 Commands" variant="info">
+
+**Node inspection**:
+```bash
+ros2 node list                    # List active nodes
+ros2 node info /node_name         # Show node details
+```
+
+**Topic inspection**:
+```bash
+ros2 topic list                   # List active topics
+ros2 topic info /topic_name       # Show topic type and connections
+ros2 topic echo /topic_name       # Print messages
+ros2 topic hz /topic_name         # Measure publish rate
+ros2 topic pub /cmd_vel geometry_msgs/msg/Twist "{linear: {x: 0.5}}"
+```
+
+**Service inspection**:
+```bash
+ros2 service list                 # List available services
+ros2 service type /service_name   # Show service type
+ros2 service call /service_name std_srvs/srv/SetBool "{data: true}"
+```
+
+**Action inspection**:
+```bash
+ros2 action list                  # List available actions
+ros2 action info /action_name     # Show action details
+ros2 action send_goal /navigate action_tutorials_interfaces/action/Fibonacci "{order: 5}"
+```
+
+</CollapsibleSection>
+
+---
+
+## Common Failure Modes
+
+### Failure Mode 1: QoS Incompatibility
+
+**Symptom**: Publisher and subscriber on same topic but no messages received.
+
+**Cause**: QoS policies are incompatible. A `RELIABLE` subscriber cannot receive from a `BEST_EFFORT` publisher. A `VOLATILE` publisher cannot satisfy a `TRANSIENT_LOCAL` subscriber.
+
+**Resolution**:
+1. Check QoS settings on both ends: `ros2 topic info /topic -v`
+2. Ensure reliability levels are compatible (reliable pub + any sub, or best_effort pub + best_effort sub)
+3. Use compatible durability settings
+4. Consider using `rclpy.qos.qos_profile_sensor_data` for sensors
+
+**Prevention**: Standardize QoS profiles across your system. Document expected QoS for each topic.
+
+---
+
+### Failure Mode 2: Namespace Conflicts
+
+**Symptom**: Multiple robots interfere with each other; wrong node receives commands.
+
+**Cause**: Nodes from different robots publish to the same absolute topic names without namespacing.
+
+**Resolution**:
+1. Use relative topic names (no leading `/`) in code
+2. Launch with namespace: `ros2 run pkg node --ros-args -r __ns:=/robot1`
+3. Use launch file namespacing
+4. Verify with `ros2 topic list` that topics are properly namespaced
+
+**Prevention**: Always design nodes with namespacing in mind. Avoid hardcoded absolute topic names.
+
+---
+
+### Failure Mode 3: DDS Discovery Failure
+
+**Symptom**: Nodes cannot find each other; `ros2 node list` shows no nodes from other machines.
+
+**Cause**: DDS multicast discovery blocked by network configuration, firewall, or different ROS_DOMAIN_ID.
+
+**Resolution**:
+1. Verify same `ROS_DOMAIN_ID` on all machines: `echo $ROS_DOMAIN_ID`
+2. Check firewall allows UDP multicast (ports 7400-7500)
+3. For isolated networks, configure DDS peers manually
+4. Test with `ros2 multicast receive` and `ros2 multicast send`
+
+**Prevention**: Document network requirements. Use consistent domain IDs. Test discovery before deployment.
+
+---
+
+### Failure Mode 4: Callback Starvation
+
+**Symptom**: Node becomes unresponsive; some callbacks never execute; high latency.
+
+**Cause**: Long-running callback blocks the executor, preventing other callbacks from running. Single-threaded executor cannot parallelize work.
+
+**Resolution**:
+1. Keep callbacks short; offload heavy work to threads
+2. Use `MultiThreadedExecutor` for parallel callback execution
+3. Use `ReentrantCallbackGroup` for callbacks that can run concurrently
+4. Profile callbacks to identify bottlenecks
+
+**Prevention**: Design callbacks to complete quickly. Use appropriate executor and callback groups.
+
+---
+
+### Failure Mode 5: Message Type Mismatch
+
+**Symptom**: Subscriber callback never fires; no error messages visible.
+
+**Cause**: Publisher and subscriber use different message types or versions. ROS 2 silently ignores type mismatches.
+
+**Resolution**:
+1. Verify message types match: `ros2 topic info /topic`
+2. Rebuild after interface changes: `colcon build`
+3. Source workspace after rebuild: `source install/setup.bash`
+4. Check for interface package version conflicts
+
+**Prevention**: Use consistent interface packages. Rebuild and re-source after changes.
+
+---
+
+## Hardware and Compute Requirements
+
+| Requirement | Minimum | Recommended |
+|-------------|---------|-------------|
+| Operating System | Ubuntu 22.04 LTS | Ubuntu 22.04 LTS |
+| ROS 2 | Humble | Humble or Iron |
+| CPU | 2 cores, 2.0 GHz | 4 cores, 3.0 GHz |
+| RAM | 4 GB | 8 GB |
+| Storage | 10 GB free | 20 GB free |
+| Network | Localhost only | Gigabit Ethernet for multi-machine |
+
+**Installation**:
+```bash
+# Add ROS 2 repository
+sudo apt update && sudo apt install -y software-properties-common
+sudo add-apt-repository universe
+sudo apt update && sudo apt install -y curl
+curl -sSL https://raw.githubusercontent.com/ros/rosdistro/master/ros.key | sudo apt-key add -
+sudo sh -c 'echo "deb http://packages.ros.org/ros2/ubuntu $(lsb_release -cs) main" > /etc/apt/sources.list.d/ros2.list'
+
+# Install ROS 2 Humble
+sudo apt update
+sudo apt install -y ros-humble-desktop
+
+# Source ROS 2
+echo "source /opt/ros/humble/setup.bash" >> ~/.bashrc
+source ~/.bashrc
+```
+
+---
+
+## Summary
+
+ROS 2 provides the communication infrastructure that connects robot components into a functioning system. This chapter covered the three primary communication patterns:
+
+**Topics** implement publish-subscribe for streaming data. Publishers send messages without blocking; subscribers receive asynchronously through callbacks. Use topics for sensor data, state information, and commands.
+
+**Services** provide synchronous request-response communication. Clients block until receiving a response. Use services for configuration, one-time operations, and queries.
+
+**Actions** handle long-running tasks with feedback and cancellation. Clients receive progress updates during execution. Use actions for navigation goals, manipulation tasks, and any operation that takes significant time.
+
+**Key Takeaways**:
+- Nodes are independent processes connected by topics, services, and actions
+- QoS policies must be compatible between publishers and subscribers
+- Use namespaces to isolate multiple robots or subsystems
+- Keep callbacks short to prevent executor starvation
+- DDS handles discovery automatically but requires proper network configuration
+
+---
+
+## Knowledge Check
+
+Test your understanding of ROS 2 concepts:
+
+<Quiz
+  title="Chapter 2 Quiz"
+  questions={[
+    {
+      id: "q1",
+      type: "multiple-choice",
+      question: "When should you use an action instead of a service?",
+      options: [
+        { id: "a", text: "For simple configuration changes" },
+        { id: "b", text: "For long-running tasks that need progress feedback" },
+        { id: "c", text: "For streaming sensor data" },
+        { id: "d", text: "For one-time queries" }
+      ],
+      correctAnswer: "b",
+      explanation: "Actions are designed for long-running tasks that benefit from progress feedback and cancellation support. Services are better for quick request-response operations, and topics are for streaming data."
+    },
+    {
+      id: "q2",
+      type: "multiple-choice",
+      question: "A subscriber with RELIABLE QoS cannot receive messages from a publisher with which QoS setting?",
+      options: [
+        { id: "a", text: "RELIABLE" },
+        { id: "b", text: "BEST_EFFORT" },
+        { id: "c", text: "TRANSIENT_LOCAL" },
+        { id: "d", text: "KEEP_LAST" }
+      ],
+      correctAnswer: "b",
+      explanation: "A RELIABLE subscriber requires acknowledgment of message receipt, which BEST_EFFORT publishers do not provide. The connection will be established but no messages will flow. RELIABLE subscribers can only receive from RELIABLE publishers."
+    },
+    {
+      id: "q3",
+      type: "multiple-choice",
+      question: "What is the primary cause of callback starvation in a ROS 2 node?",
+      options: [
+        { id: "a", text: "Too many subscribers" },
+        { id: "b", text: "A long-running callback blocking the executor" },
+        { id: "c", text: "Incorrect message types" },
+        { id: "d", text: "Network latency" }
+      ],
+      correctAnswer: "b",
+      explanation: "Callback starvation occurs when a long-running callback blocks the single-threaded executor, preventing other callbacks from executing. Use MultiThreadedExecutor or offload heavy work to separate threads."
+    },
+    {
+      id: "q4",
+      type: "multiple-choice",
+      question: "Which command shows the QoS settings for a topic?",
+      options: [
+        { id: "a", text: "ros2 topic list" },
+        { id: "b", text: "ros2 topic echo" },
+        { id: "c", text: "ros2 topic info /topic -v" },
+        { id: "d", text: "ros2 topic hz" }
+      ],
+      correctAnswer: "c",
+      explanation: "The -v (verbose) flag with 'ros2 topic info' displays detailed information including QoS settings for all publishers and subscribers on that topic."
+    }
+  ]}
+/>
+
+---
+
+## Further Reading
+
+- [ROS 2 Humble Documentation](https://docs.ros.org/en/humble/) - Official tutorials and API reference
+- [ROS 2 Design](https://design.ros2.org/) - Design documents explaining architectural decisions
+- [DDS Specification](https://www.omg.org/spec/DDS/) - Underlying middleware standard
+- [rclpy API](https://docs.ros2.org/latest/api/rclpy/) - Python client library reference
+
+---
+
+## Next Chapter Preview
+
+In the next chapter, **Digital Twins: Gazebo & Unity**, you will learn:
+- Setting up Gazebo Harmonic simulation environments
+- Creating robot models with SDF and URDF
+- Connecting simulation to ROS 2 with ros_gz bridge
+- Sensor simulation for cameras, LiDAR, and IMU

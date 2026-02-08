@@ -1,27 +1,19 @@
 <!--
 SYNC IMPACT REPORT
 ==================
-Version Change: N/A → 1.0.0 (Initial Ratification)
-Date: 2026-01-19
+Version Change: 1.0.0 → 1.1.0 (MINOR)
+Date: 2026-01-29
 
-Modified Principles: N/A (initial creation)
+Modified Sections:
+- V. Purpose — Added RAG chatbot as first-class deliverable
+- X. AI-Native Design Rules — Added vector indexing, chunk IDs, multilingual RAG
+- XII. Safety and Ethics — Added RAG-specific safety constraints
+- Governance/Change Discipline — Added RAG schema governance requirements
 
 Added Sections:
-- I. Supreme Authority
-- II. Source of Truth Hierarchy
-- III. Context7 MCP Usage
-- IV. GitHub MCP Usage
-- V. Purpose
-- VI. Audience Assumptions
-- VII. Pedagogical Contract
-- VIII. Structural Constraints
-- IX. Technical Fidelity Rules
-- X. AI-Native Design Rules
-- XI. Tone and Style
-- XII. Safety and Ethics
-- Governance (including Change Discipline)
+- XIII. Integrated RAG System Governance (NEW)
 
-Removed Sections: N/A (initial creation)
+Removed Sections: None
 
 Templates Requiring Updates:
 - .specify/templates/plan-template.md — ✅ Compatible (Constitution Check section exists)
@@ -104,8 +96,17 @@ This repository produces an AI-native, interactive textbook for teaching
 Physical AI and Humanoid Robotics, emphasizing embodied intelligence,
 simulation-first design, and sim-to-real deployment.
 
+The textbook includes an **Integrated RAG Chatbot** as a first-class
+deliverable. This chatbot is not an add-on feature but a core AI-native
+learning interface that:
+- Converts the entire book into a RAG-indexed knowledge base
+- Enables book-wide question answering
+- Enables question answering restricted to user-selected text
+- Is embedded directly into the published Docusaurus site
+
 **Rationale**: Defines the singular mission to prevent scope creep and
-misaligned contributions.
+misaligned contributions. The RAG chatbot elevates the textbook from
+static content to an interactive learning system.
 
 ## VI. Audience Assumptions
 
@@ -173,15 +174,24 @@ aligned with industry standards.
 ## X. AI-Native Design Rules
 
 Content MUST be written to support:
-- RAG chunking
+- RAG chunking with well-defined vector chunk boundaries
+- Stable chunk IDs for forward compatibility with re-indexing
 - User-selected text grounding
 - Chapter-level personalization
 - Multi-language transformation (including Urdu)
+- Multilingual RAG retrieval
+
+Agents MUST:
+- Structure content in discrete, semantically complete sections
+- Ensure each section is retrievable without surrounding context
+- Avoid cross-references that break chunk independence
+- Maintain consistent heading hierarchies for chunk boundary detection
 
 Agents MUST avoid monolithic explanations.
 
 **Rationale**: Enables the AI-native textbook to serve as an effective
-knowledge base for retrieval-augmented applications.
+knowledge base for retrieval-augmented applications, supporting both
+initial indexing and future re-indexing without breaking chunk references.
 
 ## XI. Tone and Style
 
@@ -197,8 +207,73 @@ knowledge base for retrieval-augmented applications.
 - Explicit warnings for latency and hardware risk are required
 - No content enabling weaponization or unsafe autonomy
 
+### RAG System Safety
+
+The RAG chatbot MUST:
+- Respect simulation-first safety rules in all generated answers
+- Never provide hallucinated physical-world instructions
+- Clearly indicate when information is not found in retrieved content
+- Refuse to generate safety-critical guidance not grounded in book content
+
 **Rationale**: Ensures responsible robotics education and prevents
-misuse of instructional material.
+misuse of instructional material. RAG-generated answers carry the same
+safety obligations as authored content.
+
+## XIII. Integrated RAG System Governance
+
+### System Definition
+
+The Integrated RAG Chatbot is a governed subsystem comprising:
+- **Content Authoring**: Human-authored MDX content (this textbook)
+- **Indexing**: Vector embedding and storage pipeline
+- **Retrieval**: Semantic search against indexed content
+- **Generation**: LLM-based answer synthesis from retrieved chunks
+
+### Technology Stack
+
+The RAG system MUST use:
+- **Agent Framework**: OpenAI Agents SDK
+- **Serving Layer**: FastAPI
+- **Metadata Storage**: Neon Serverless Postgres
+- **Vector Database**: Qdrant Cloud (Free Tier)
+
+### Corpus Authority
+
+The book content is the **sole authoritative corpus** for RAG retrieval.
+
+Agents and the RAG system MUST NOT:
+- Inject external knowledge sources unless explicitly authorized
+- Augment retrieved content with information not present in the book
+- Allow model knowledge to override retrieved book content
+
+### Grounding Rules
+
+1. **Book-wide retrieval**: When no text is selected, the RAG system
+   retrieves from the entire indexed book corpus.
+
+2. **User-selected text grounding**: When the user selects specific text,
+   that selection becomes the **exclusive retrieval scope**. Global
+   retrieval is overridden.
+
+3. **Contradiction prohibition**: RAG-generated answers MUST NOT
+   contradict book content. If retrieved chunks conflict, the system
+   MUST acknowledge the conflict rather than fabricate resolution.
+
+4. **Absence acknowledgment**: If an answer is not present in retrieved
+   chunks, the agent MUST explicitly state: "This information is not
+   covered in the retrieved content."
+
+### Separation of Concerns
+
+| Layer | Responsibility | May Modify Content? |
+|-------|----------------|---------------------|
+| Content Authoring | Create/edit MDX source | Yes |
+| Indexing | Embed and store vectors | No (read-only) |
+| Retrieval | Query vector DB | No |
+| Generation | Synthesize answers | No (grounded only) |
+
+**Rationale**: Ensures the RAG system remains a faithful interface to
+authored content, preventing knowledge drift or unauthorized augmentation.
 
 ## Governance
 
@@ -230,4 +305,21 @@ misuse of instructional material.
 - Large changes require history inspection via GitHub MCP
 - Constitution changes must be explicit and versioned
 
-**Version**: 1.0.0 | **Ratified**: 2026-01-19 | **Last Amended**: 2026-01-19
+### RAG System Change Governance
+
+The following RAG system components are **governed artifacts** requiring
+versioned constitution amendments before modification:
+
+- Vector embedding model selection
+- Chunk boundary detection algorithm
+- Retrieval ranking logic
+- Grounding rule modifications
+- Technology stack changes (Qdrant, Neon, FastAPI, OpenAI Agents SDK)
+
+Changes to these components MUST follow the Amendment Procedure above.
+
+**Rationale**: RAG system behavior directly affects learning outcomes.
+Uncontrolled changes to retrieval or generation logic could silently
+degrade educational quality.
+
+**Version**: 1.1.0 | **Ratified**: 2026-01-19 | **Last Amended**: 2026-01-29

@@ -1,0 +1,2026 @@
+---
+id: "capstone-autonomous-agent"
+title: "Capstone: Autonomous Humanoid Agent"
+sidebar_label: "8. Capstone"
+sidebar_position: 1
+keywords:
+  - capstone
+  - autonomous agent
+  - system integration
+  - humanoid robot
+  - end-to-end
+  - behavior tree
+  - state machine
+description: "Integrating all chapters into a complete autonomous humanoid agent running in simulation."
+---
+
+import Quiz from '@site/src/components/Quiz';
+import CodePlayground from '@site/src/components/CodePlayground';
+import CollapsibleSection from '@site/src/components/CollapsibleSection';
+
+# Capstone: Autonomous Humanoid Agent
+
+**Estimated Time**: 120-150 minutes
+
+This capstone chapter brings together everything you've learned—Physical AI foundations, ROS 2 communication, digital twin simulation, NVIDIA Isaac, vision-language-action models, humanoid locomotion, and conversational interfaces—into a complete autonomous humanoid agent. You'll build a system that can receive voice commands, perceive its environment, plan actions, and execute complex manipulation tasks.
+
+---
+
+## Learning Objectives
+
+By the end of this chapter, you will be able to:
+
+1. **[LO-01]** (Create): Design and implement an integrated autonomous humanoid system combining perception, planning, and action subsystems.
+
+2. **[LO-02]** (Apply): Define behavior trees that orchestrate multi-step task sequences with failure recovery.
+
+3. **[LO-03]** (Analyze): Coordinate ROS 2 subsystem communication with proper timing, priorities, and fault isolation.
+
+4. **[LO-04]** (Evaluate): Debug end-to-end autonomous systems using structured isolation and observability techniques.
+
+5. **[LO-05]** (Create): Deploy a complete Unitree H1 autonomous agent in Gazebo or Isaac Sim simulation.
+
+---
+
+## System Architecture
+
+<!-- Architecture diagram placeholder - to be added during chapter authoring -->
+
+The autonomous humanoid agent integrates all subsystems from previous chapters:
+
+```
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                      AUTONOMOUS HUMANOID AGENT ARCHITECTURE                      │
+├─────────────────────────────────────────────────────────────────────────────────┤
+│                                                                                  │
+│    ┌─────────────────────────────────────────────────────────────────────────┐  │
+│    │                         CONVERSATIONAL LAYER (Ch.7)                      │  │
+│    │   ┌───────────┐   ┌───────────┐   ┌───────────┐   ┌───────────┐        │  │
+│    │   │    ASR    │──▶│    NLU    │──▶│  Dialogue │──▶│    TTS    │        │  │
+│    │   │ (Whisper) │   │  (Intent) │   │  Manager  │   │  (Piper)  │        │  │
+│    │   └───────────┘   └─────┬─────┘   └─────┬─────┘   └───────────┘        │  │
+│    └─────────────────────────┼───────────────┼──────────────────────────────┘  │
+│                              │               │                                   │
+│                              ▼               ▼                                   │
+│    ┌─────────────────────────────────────────────────────────────────────────┐  │
+│    │                          EXECUTIVE LAYER (Behavior Tree)                 │  │
+│    │   ┌─────────────────────────────────────────────────────────────────┐   │  │
+│    │   │ Root Selector                                                    │   │  │
+│    │   │  ├── Emergency Stop (highest priority)                          │   │  │
+│    │   │  ├── Voice Command Handler                                      │   │  │
+│    │   │  └── Autonomous Task Executor                                   │   │  │
+│    │   │       ├── Navigate to Location                                  │   │  │
+│    │   │       ├── Search for Object                                     │   │  │
+│    │   │       ├── Grasp Object                                          │   │  │
+│    │   │       └── Deliver Object                                        │   │  │
+│    │   └─────────────────────────────────────────────────────────────────┘   │  │
+│    └─────────────────────────────────────────────────────────────────────────┘  │
+│                              │                                                   │
+│          ┌──────────────────┼──────────────────┐                                │
+│          ▼                  ▼                  ▼                                 │
+│    ┌───────────┐      ┌───────────┐      ┌───────────┐                         │
+│    │ PERCEPTION│      │ LOCOMOTION│      │MANIPULATION│                         │
+│    │  (Ch.5)   │      │  (Ch.6)   │      │   (Ch.6)   │                         │
+│    ├───────────┤      ├───────────┤      ├───────────┤                         │
+│    │ • Camera  │      │ • Balance │      │ • Grasp   │                         │
+│    │ • CLIP    │      │ • Gait    │      │ • IK      │                         │
+│    │ • VLA     │      │ • Nav2    │      │ • Force   │                         │
+│    └───────────┘      └───────────┘      └───────────┘                         │
+│          │                  │                  │                                 │
+│          └──────────────────┼──────────────────┘                                │
+│                             ▼                                                    │
+│    ┌─────────────────────────────────────────────────────────────────────────┐  │
+│    │                      SIMULATION LAYER (Ch.3, Ch.4)                       │  │
+│    │   ┌─────────────────┐  ┌─────────────────┐  ┌──────────────────────┐    │  │
+│    │   │ Gazebo Harmonic │  │ NVIDIA Isaac    │  │ Unitree H1 URDF/SDF  │    │  │
+│    │   │ (Physics/Render)│  │ (GPU Physics)   │  │ (Robot Model)        │    │  │
+│    │   └─────────────────┘  └─────────────────┘  └──────────────────────┘    │  │
+│    └─────────────────────────────────────────────────────────────────────────┘  │
+│                                                                                  │
+│    ┌─────────────────────────────────────────────────────────────────────────┐  │
+│    │                        ROS 2 COMMUNICATION (Ch.2)                        │  │
+│    │   Topics: /cmd_vel, /joint_states, /camera/image, /goal_pose, /speech   │  │
+│    │   Services: /get_object_pose, /plan_grasp, /get_status                  │  │
+│    │   Actions: /navigate_to_pose, /pick_object, /place_object               │  │
+│    └─────────────────────────────────────────────────────────────────────────┘  │
+│                                                                                  │
+└─────────────────────────────────────────────────────────────────────────────────┘
+```
+
+**Design Principles**:
+
+1. **Subsystem Isolation**: Each subsystem (perception, locomotion, manipulation, conversation) runs independently and communicates via ROS 2.
+
+2. **Fault Tolerance**: The behavior tree handles failures at each level with retry and fallback strategies.
+
+3. **Real-Time Priority**: Safety-critical tasks (balance, collision avoidance) have highest priority.
+
+4. **Observable State**: All subsystem states are published for debugging and monitoring.
+
+---
+
+## System Integration
+
+### Subsystem Registry
+
+The central registry tracks all subsystem states and health:
+
+```python
+#!/usr/bin/env python3
+"""
+Subsystem registry for autonomous humanoid agent.
+Tracks health, state, and dependencies across all subsystems.
+"""
+
+import rclpy
+from rclpy.node import Node
+from rclpy.qos import QoSProfile, ReliabilityPolicy, HistoryPolicy
+from std_msgs.msg import String
+from diagnostic_msgs.msg import DiagnosticArray, DiagnosticStatus
+from dataclasses import dataclass, field
+from typing import Dict, Optional, Callable
+from enum import Enum
+import time
+import threading
+
+
+class SubsystemState(Enum):
+    """State of a subsystem."""
+    UNKNOWN = "unknown"
+    INITIALIZING = "initializing"
+    READY = "ready"
+    BUSY = "busy"
+    ERROR = "error"
+    SHUTDOWN = "shutdown"
+
+
+@dataclass
+class SubsystemInfo:
+    """Information about a registered subsystem."""
+    name: str
+    state: SubsystemState = SubsystemState.UNKNOWN
+    last_heartbeat: float = 0.0
+    error_message: str = ""
+    capabilities: list = field(default_factory=list)
+    dependencies: list = field(default_factory=list)
+
+
+class SubsystemRegistry(Node):
+    """
+    Central registry for all robot subsystems.
+
+    Monitors health, manages dependencies, and coordinates startup/shutdown.
+    """
+
+    HEARTBEAT_TIMEOUT = 5.0  # seconds
+
+    def __init__(self):
+        super().__init__('subsystem_registry')
+
+        self.subsystems: Dict[str, SubsystemInfo] = {}
+        self.lock = threading.Lock()
+
+        # Expected subsystems for autonomous operation
+        self.required_subsystems = [
+            'perception',
+            'locomotion',
+            'manipulation',
+            'conversation',
+            'behavior_tree'
+        ]
+
+        # QoS for reliable status updates
+        qos = QoSProfile(
+            reliability=ReliabilityPolicy.RELIABLE,
+            history=HistoryPolicy.KEEP_LAST,
+            depth=10
+        )
+
+        # Subscribe to subsystem heartbeats
+        self.heartbeat_sub = self.create_subscription(
+            String,
+            '/subsystem/heartbeat',
+            self._heartbeat_callback,
+            qos
+        )
+
+        # Publish system status
+        self.status_pub = self.create_publisher(
+            DiagnosticArray,
+            '/diagnostics',
+            qos
+        )
+
+        # Health check timer (1 Hz)
+        self.health_timer = self.create_timer(1.0, self._health_check)
+
+        self.get_logger().info('Subsystem registry initialized')
+
+    def register_subsystem(
+        self,
+        name: str,
+        capabilities: list = None,
+        dependencies: list = None
+    ):
+        """Register a new subsystem."""
+        with self.lock:
+            self.subsystems[name] = SubsystemInfo(
+                name=name,
+                state=SubsystemState.INITIALIZING,
+                last_heartbeat=time.time(),
+                capabilities=capabilities or [],
+                dependencies=dependencies or []
+            )
+        self.get_logger().info(f'Registered subsystem: {name}')
+
+    def _heartbeat_callback(self, msg: String):
+        """Handle subsystem heartbeat messages."""
+        # Format: "name:state[:error_message]"
+        parts = msg.data.split(':')
+        if len(parts) < 2:
+            return
+
+        name = parts[0]
+        state_str = parts[1]
+        error_msg = parts[2] if len(parts) > 2 else ""
+
+        with self.lock:
+            if name not in self.subsystems:
+                # Auto-register unknown subsystems
+                self.subsystems[name] = SubsystemInfo(name=name)
+
+            try:
+                self.subsystems[name].state = SubsystemState(state_str)
+            except ValueError:
+                self.subsystems[name].state = SubsystemState.UNKNOWN
+
+            self.subsystems[name].last_heartbeat = time.time()
+            self.subsystems[name].error_message = error_msg
+
+    def _health_check(self):
+        """Periodic health check of all subsystems."""
+        current_time = time.time()
+        diag_array = DiagnosticArray()
+        diag_array.header.stamp = self.get_clock().now().to_msg()
+
+        with self.lock:
+            for name, info in self.subsystems.items():
+                status = DiagnosticStatus()
+                status.name = f"subsystem/{name}"
+
+                # Check heartbeat timeout
+                time_since_heartbeat = current_time - info.last_heartbeat
+                if time_since_heartbeat > self.HEARTBEAT_TIMEOUT:
+                    status.level = DiagnosticStatus.ERROR
+                    status.message = f"No heartbeat for {time_since_heartbeat:.1f}s"
+                elif info.state == SubsystemState.ERROR:
+                    status.level = DiagnosticStatus.ERROR
+                    status.message = info.error_message
+                elif info.state == SubsystemState.READY:
+                    status.level = DiagnosticStatus.OK
+                    status.message = "Operational"
+                elif info.state == SubsystemState.BUSY:
+                    status.level = DiagnosticStatus.OK
+                    status.message = "Busy"
+                else:
+                    status.level = DiagnosticStatus.WARN
+                    status.message = f"State: {info.state.value}"
+
+                diag_array.status.append(status)
+
+        self.status_pub.publish(diag_array)
+
+    def all_ready(self) -> bool:
+        """Check if all required subsystems are ready."""
+        with self.lock:
+            for name in self.required_subsystems:
+                if name not in self.subsystems:
+                    return False
+                if self.subsystems[name].state not in [
+                    SubsystemState.READY,
+                    SubsystemState.BUSY
+                ]:
+                    return False
+        return True
+
+    def get_subsystem_state(self, name: str) -> Optional[SubsystemState]:
+        """Get current state of a subsystem."""
+        with self.lock:
+            if name in self.subsystems:
+                return self.subsystems[name].state
+        return None
+
+
+def main(args=None):
+    rclpy.init(args=args)
+    node = SubsystemRegistry()
+
+    try:
+        rclpy.spin(node)
+    except KeyboardInterrupt:
+        pass
+    finally:
+        node.destroy_node()
+        rclpy.shutdown()
+
+
+if __name__ == '__main__':
+    main()
+```
+
+### Inter-Subsystem Communication
+
+Subsystems communicate through well-defined ROS 2 interfaces:
+
+```python
+# Message definitions (simplified - actual msg files needed)
+# File: autonomous_agent_msgs/msg/TaskRequest.msg
+# string task_type  # "navigate", "pick", "place", "speak"
+# string target     # Location or object name
+# float64[] params  # Task-specific parameters
+
+# File: autonomous_agent_msgs/msg/TaskStatus.msg
+# string task_id
+# string status     # "pending", "executing", "completed", "failed"
+# string error_message
+# float64 progress  # 0.0 to 1.0
+```
+
+```python
+from dataclasses import dataclass
+from typing import Optional, List, Dict, Any
+from enum import Enum
+import uuid
+
+
+class TaskType(Enum):
+    """Types of tasks the agent can execute."""
+    NAVIGATE = "navigate"
+    PICK = "pick"
+    PLACE = "place"
+    SPEAK = "speak"
+    LOOK_AT = "look_at"
+    WAIT = "wait"
+
+
+class TaskStatus(Enum):
+    """Status of a task."""
+    PENDING = "pending"
+    EXECUTING = "executing"
+    COMPLETED = "completed"
+    FAILED = "failed"
+    CANCELLED = "cancelled"
+
+
+@dataclass
+class Task:
+    """A discrete task to be executed by the agent."""
+    task_type: TaskType
+    target: str
+    params: Dict[str, Any] = None
+    task_id: str = None
+    status: TaskStatus = TaskStatus.PENDING
+    error_message: str = ""
+    progress: float = 0.0
+
+    def __post_init__(self):
+        if self.task_id is None:
+            self.task_id = str(uuid.uuid4())[:8]
+        if self.params is None:
+            self.params = {}
+
+
+@dataclass
+class TaskSequence:
+    """A sequence of tasks to execute."""
+    name: str
+    tasks: List[Task]
+    current_index: int = 0
+
+    def current_task(self) -> Optional[Task]:
+        """Get the current task to execute."""
+        if 0 <= self.current_index < len(self.tasks):
+            return self.tasks[self.current_index]
+        return None
+
+    def advance(self) -> bool:
+        """Advance to the next task. Returns True if there are more tasks."""
+        self.current_index += 1
+        return self.current_index < len(self.tasks)
+
+    def is_complete(self) -> bool:
+        """Check if all tasks are complete."""
+        return self.current_index >= len(self.tasks)
+```
+
+---
+
+## Behavior Tree Implementation
+
+Behavior trees provide reactive task orchestration with clear failure handling:
+
+```python
+#!/usr/bin/env python3
+"""
+Behavior tree implementation for autonomous humanoid agent.
+Uses py_trees library pattern for task orchestration.
+"""
+
+from enum import Enum, auto
+from abc import ABC, abstractmethod
+from typing import Optional, List, Callable
+from dataclasses import dataclass
+import time
+
+
+class Status(Enum):
+    """Behavior tree node status."""
+    SUCCESS = auto()
+    FAILURE = auto()
+    RUNNING = auto()
+
+
+class Blackboard:
+    """Shared memory for behavior tree nodes."""
+
+    def __init__(self):
+        self._data = {}
+
+    def set(self, key: str, value):
+        self._data[key] = value
+
+    def get(self, key: str, default=None):
+        return self._data.get(key, default)
+
+    def has(self, key: str) -> bool:
+        return key in self._data
+
+
+class BehaviorNode(ABC):
+    """Base class for behavior tree nodes."""
+
+    def __init__(self, name: str):
+        self.name = name
+        self.status = Status.FAILURE
+        self.blackboard: Optional[Blackboard] = None
+
+    @abstractmethod
+    def tick(self) -> Status:
+        """Execute one tick of this node."""
+        pass
+
+    def setup(self, blackboard: Blackboard):
+        """Initialize with blackboard reference."""
+        self.blackboard = blackboard
+
+
+class Sequence(BehaviorNode):
+    """
+    Execute children in sequence.
+    Fails immediately if any child fails.
+    """
+
+    def __init__(self, name: str, children: List[BehaviorNode]):
+        super().__init__(name)
+        self.children = children
+        self.current_child = 0
+
+    def setup(self, blackboard: Blackboard):
+        super().setup(blackboard)
+        for child in self.children:
+            child.setup(blackboard)
+
+    def tick(self) -> Status:
+        while self.current_child < len(self.children):
+            child = self.children[self.current_child]
+            status = child.tick()
+
+            if status == Status.RUNNING:
+                return Status.RUNNING
+            elif status == Status.FAILURE:
+                self.current_child = 0  # Reset for next tick
+                return Status.FAILURE
+
+            # SUCCESS - move to next child
+            self.current_child += 1
+
+        # All children succeeded
+        self.current_child = 0
+        return Status.SUCCESS
+
+
+class Selector(BehaviorNode):
+    """
+    Execute children until one succeeds.
+    Returns FAILURE only if all children fail.
+    """
+
+    def __init__(self, name: str, children: List[BehaviorNode]):
+        super().__init__(name)
+        self.children = children
+        self.current_child = 0
+
+    def setup(self, blackboard: Blackboard):
+        super().setup(blackboard)
+        for child in self.children:
+            child.setup(blackboard)
+
+    def tick(self) -> Status:
+        while self.current_child < len(self.children):
+            child = self.children[self.current_child]
+            status = child.tick()
+
+            if status == Status.RUNNING:
+                return Status.RUNNING
+            elif status == Status.SUCCESS:
+                self.current_child = 0
+                return Status.SUCCESS
+
+            # FAILURE - try next child
+            self.current_child += 1
+
+        # All children failed
+        self.current_child = 0
+        return Status.FAILURE
+
+
+class Condition(BehaviorNode):
+    """Check a condition (instantaneous)."""
+
+    def __init__(self, name: str, condition_fn: Callable[['Blackboard'], bool]):
+        super().__init__(name)
+        self.condition_fn = condition_fn
+
+    def tick(self) -> Status:
+        if self.condition_fn(self.blackboard):
+            return Status.SUCCESS
+        return Status.FAILURE
+
+
+class Action(BehaviorNode):
+    """Execute an action (may take multiple ticks)."""
+
+    def __init__(
+        self,
+        name: str,
+        start_fn: Callable[['Blackboard'], None] = None,
+        tick_fn: Callable[['Blackboard'], Status] = None,
+        end_fn: Callable[['Blackboard', Status], None] = None
+    ):
+        super().__init__(name)
+        self.start_fn = start_fn
+        self.tick_fn = tick_fn
+        self.end_fn = end_fn
+        self.started = False
+
+    def tick(self) -> Status:
+        if not self.started:
+            if self.start_fn:
+                self.start_fn(self.blackboard)
+            self.started = True
+
+        if self.tick_fn:
+            status = self.tick_fn(self.blackboard)
+        else:
+            status = Status.SUCCESS
+
+        if status != Status.RUNNING:
+            if self.end_fn:
+                self.end_fn(self.blackboard, status)
+            self.started = False
+
+        return status
+
+
+class Retry(BehaviorNode):
+    """Retry child node on failure."""
+
+    def __init__(self, name: str, child: BehaviorNode, max_attempts: int = 3):
+        super().__init__(name)
+        self.child = child
+        self.max_attempts = max_attempts
+        self.attempts = 0
+
+    def setup(self, blackboard: Blackboard):
+        super().setup(blackboard)
+        self.child.setup(blackboard)
+
+    def tick(self) -> Status:
+        status = self.child.tick()
+
+        if status == Status.FAILURE:
+            self.attempts += 1
+            if self.attempts < self.max_attempts:
+                return Status.RUNNING  # Will retry
+            self.attempts = 0
+            return Status.FAILURE
+
+        if status == Status.SUCCESS:
+            self.attempts = 0
+
+        return status
+
+
+class Timeout(BehaviorNode):
+    """Fail if child takes too long."""
+
+    def __init__(self, name: str, child: BehaviorNode, timeout_sec: float):
+        super().__init__(name)
+        self.child = child
+        self.timeout_sec = timeout_sec
+        self.start_time: Optional[float] = None
+
+    def setup(self, blackboard: Blackboard):
+        super().setup(blackboard)
+        self.child.setup(blackboard)
+
+    def tick(self) -> Status:
+        if self.start_time is None:
+            self.start_time = time.time()
+
+        elapsed = time.time() - self.start_time
+        if elapsed > self.timeout_sec:
+            self.start_time = None
+            return Status.FAILURE
+
+        status = self.child.tick()
+
+        if status != Status.RUNNING:
+            self.start_time = None
+
+        return status
+```
+
+### Fetch Object Behavior Tree
+
+A complete example: fetching an object from another room.
+
+```python
+#!/usr/bin/env python3
+"""
+Fetch object behavior tree for autonomous humanoid.
+Combines navigation, perception, and manipulation.
+"""
+
+import rclpy
+from rclpy.node import Node
+from rclpy.action import ActionClient
+from geometry_msgs.msg import PoseStamped
+from nav2_msgs.action import NavigateToPose
+from std_msgs.msg import String
+
+# Import behavior tree classes from previous example
+# from behavior_tree import *
+
+
+class FetchObjectBehavior(Node):
+    """
+    Behavior tree node for fetching objects.
+
+    Sequence:
+    1. Navigate to target location
+    2. Search for object
+    3. Approach object
+    4. Grasp object
+    5. Return to start
+    6. Place/deliver object
+    """
+
+    def __init__(self):
+        super().__init__('fetch_object_behavior')
+
+        # Action clients
+        self.nav_client = ActionClient(self, NavigateToPose, 'navigate_to_pose')
+
+        # Publishers
+        self.speech_pub = self.create_publisher(String, '/speech/request', 10)
+
+        # Blackboard for sharing state
+        self.blackboard = Blackboard()
+
+        # Build the behavior tree
+        self.tree = self._build_tree()
+        self.tree.setup(self.blackboard)
+
+        # Tick timer (10 Hz)
+        self.tick_timer = self.create_timer(0.1, self._tick)
+
+        self.get_logger().info('Fetch object behavior initialized')
+
+    def _build_tree(self) -> BehaviorNode:
+        """Construct the fetch object behavior tree."""
+
+        # Define action callbacks
+        def start_navigation(bb: Blackboard):
+            target = bb.get('target_location', 'kitchen')
+            self.get_logger().info(f'Starting navigation to {target}')
+            bb.set('nav_goal_sent', False)
+            bb.set('nav_complete', False)
+
+        def tick_navigation(bb: Blackboard) -> Status:
+            if not bb.get('nav_goal_sent'):
+                self._send_nav_goal(bb.get('target_location'))
+                bb.set('nav_goal_sent', True)
+                return Status.RUNNING
+
+            if bb.get('nav_complete'):
+                return Status.SUCCESS if bb.get('nav_success') else Status.FAILURE
+
+            return Status.RUNNING
+
+        def start_search(bb: Blackboard):
+            target_object = bb.get('target_object', 'cup')
+            self.get_logger().info(f'Searching for {target_object}')
+            bb.set('search_started', True)
+            bb.set('object_found', False)
+
+        def tick_search(bb: Blackboard) -> Status:
+            # Placeholder: integrate with VLA perception
+            # In real implementation, this queries the perception subsystem
+            if bb.get('object_detected'):
+                bb.set('object_found', True)
+                bb.set('object_pose', bb.get('detected_object_pose'))
+                return Status.SUCCESS
+
+            # Simulate search timeout
+            if bb.get('search_time', 0) > 10.0:
+                return Status.FAILURE
+
+            return Status.RUNNING
+
+        def start_grasp(bb: Blackboard):
+            self.get_logger().info('Initiating grasp sequence')
+            bb.set('grasp_started', True)
+
+        def tick_grasp(bb: Blackboard) -> Status:
+            # Placeholder: integrate with manipulation subsystem
+            if bb.get('grasp_complete'):
+                return Status.SUCCESS if bb.get('grasp_success') else Status.FAILURE
+            return Status.RUNNING
+
+        def announce(message: str):
+            """Create an action that speaks a message."""
+            def tick(bb: Blackboard) -> Status:
+                msg = String()
+                msg.data = message
+                self.speech_pub.publish(msg)
+                return Status.SUCCESS
+            return tick
+
+        # Build the tree
+        tree = Sequence("fetch_object_root", [
+            # Announce start
+            Action(
+                "announce_start",
+                tick_fn=announce("Starting fetch task")
+            ),
+
+            # Navigate to target location
+            Retry(
+                "retry_navigation",
+                Timeout(
+                    "navigation_timeout",
+                    Action(
+                        "navigate_to_location",
+                        start_fn=start_navigation,
+                        tick_fn=tick_navigation
+                    ),
+                    timeout_sec=60.0
+                ),
+                max_attempts=2
+            ),
+
+            # Announce arrival
+            Action(
+                "announce_arrival",
+                tick_fn=announce("Arrived at location. Searching for object.")
+            ),
+
+            # Search for object
+            Retry(
+                "retry_search",
+                Timeout(
+                    "search_timeout",
+                    Action(
+                        "search_for_object",
+                        start_fn=start_search,
+                        tick_fn=tick_search
+                    ),
+                    timeout_sec=30.0
+                ),
+                max_attempts=3
+            ),
+
+            # Approach object
+            Action(
+                "approach_object",
+                tick_fn=lambda bb: Status.SUCCESS  # Placeholder
+            ),
+
+            # Grasp object
+            Retry(
+                "retry_grasp",
+                Action(
+                    "grasp_object",
+                    start_fn=start_grasp,
+                    tick_fn=tick_grasp
+                ),
+                max_attempts=3
+            ),
+
+            # Announce success
+            Action(
+                "announce_grasp_success",
+                tick_fn=announce("Object grasped. Returning.")
+            ),
+
+            # Return to start
+            Action(
+                "return_to_start",
+                start_fn=lambda bb: bb.set('target_location', bb.get('start_location')),
+                tick_fn=tick_navigation
+            ),
+
+            # Complete
+            Action(
+                "announce_complete",
+                tick_fn=announce("Task complete.")
+            )
+        ])
+
+        return tree
+
+    def _send_nav_goal(self, location: str):
+        """Send navigation goal to Nav2."""
+        # Location coordinates (would come from semantic map)
+        locations = {
+            'kitchen': (5.0, 3.0),
+            'living_room': (0.0, 0.0),
+            'bedroom': (-3.0, 4.0),
+            'start': (0.0, 0.0),
+        }
+
+        coords = locations.get(location, (0.0, 0.0))
+
+        goal = NavigateToPose.Goal()
+        goal.pose.header.frame_id = 'map'
+        goal.pose.header.stamp = self.get_clock().now().to_msg()
+        goal.pose.pose.position.x = coords[0]
+        goal.pose.pose.position.y = coords[1]
+        goal.pose.pose.orientation.w = 1.0
+
+        self.nav_client.wait_for_server()
+        future = self.nav_client.send_goal_async(goal)
+        future.add_done_callback(self._nav_goal_response)
+
+    def _nav_goal_response(self, future):
+        """Handle navigation goal response."""
+        goal_handle = future.result()
+        if not goal_handle.accepted:
+            self.blackboard.set('nav_complete', True)
+            self.blackboard.set('nav_success', False)
+            return
+
+        result_future = goal_handle.get_result_async()
+        result_future.add_done_callback(self._nav_result)
+
+    def _nav_result(self, future):
+        """Handle navigation result."""
+        result = future.result()
+        self.blackboard.set('nav_complete', True)
+        self.blackboard.set('nav_success', True)  # Check result.status
+
+    def _tick(self):
+        """Tick the behavior tree."""
+        if not hasattr(self, '_task_active') or not self._task_active:
+            return
+
+        status = self.tree.tick()
+
+        if status == Status.SUCCESS:
+            self.get_logger().info('Fetch task completed successfully')
+            self._task_active = False
+        elif status == Status.FAILURE:
+            self.get_logger().error('Fetch task failed')
+            self._task_active = False
+
+    def start_fetch(self, target_object: str, target_location: str):
+        """Start a fetch task."""
+        self.blackboard.set('target_object', target_object)
+        self.blackboard.set('target_location', target_location)
+        self.blackboard.set('start_location', 'start')
+        self._task_active = True
+        self.get_logger().info(
+            f'Starting fetch: {target_object} from {target_location}'
+        )
+
+
+def main(args=None):
+    rclpy.init(args=args)
+    node = FetchObjectBehavior()
+
+    # Example: start a fetch task
+    node.start_fetch('red_cup', 'kitchen')
+
+    try:
+        rclpy.spin(node)
+    except KeyboardInterrupt:
+        pass
+    finally:
+        node.destroy_node()
+        rclpy.shutdown()
+
+
+if __name__ == '__main__':
+    main()
+```
+
+---
+
+## Task Sequence Definition
+
+### Multi-Step Task Decomposition
+
+Complex tasks are decomposed into primitive actions:
+
+```python
+from typing import List, Dict, Any
+from dataclasses import dataclass, field
+from enum import Enum
+
+
+class PrimitiveAction(Enum):
+    """Primitive actions the robot can execute."""
+    NAVIGATE = "navigate"           # Move to location
+    LOOK = "look"                   # Direct gaze/camera
+    DETECT = "detect"               # Find object in view
+    APPROACH = "approach"           # Move closer to object
+    GRASP = "grasp"                 # Close gripper on object
+    RELEASE = "release"             # Open gripper
+    LIFT = "lift"                   # Raise arm
+    LOWER = "lower"                 # Lower arm
+    SPEAK = "speak"                 # Text-to-speech
+    LISTEN = "listen"               # Wait for speech input
+    WAIT = "wait"                   # Pause execution
+
+
+@dataclass
+class TaskPlan:
+    """A plan decomposed into primitive actions."""
+    name: str
+    description: str
+    primitives: List[Dict[str, Any]] = field(default_factory=list)
+
+
+class TaskDecomposer:
+    """
+    Decomposes high-level tasks into primitive action sequences.
+    """
+
+    def __init__(self):
+        # Predefined task templates
+        self.templates = {
+            'fetch': self._decompose_fetch,
+            'deliver': self._decompose_deliver,
+            'tidy': self._decompose_tidy,
+            'greet': self._decompose_greet,
+        }
+
+    def decompose(self, task_name: str, params: Dict[str, Any]) -> TaskPlan:
+        """Decompose a high-level task into primitives."""
+        if task_name in self.templates:
+            return self.templates[task_name](params)
+
+        raise ValueError(f"Unknown task: {task_name}")
+
+    def _decompose_fetch(self, params: Dict[str, Any]) -> TaskPlan:
+        """
+        Decompose 'fetch X from Y' into primitives.
+
+        Params:
+            object: Object to fetch
+            location: Where to find it
+            return_location: Where to bring it (default: start)
+        """
+        obj = params.get('object', 'object')
+        location = params.get('location', 'kitchen')
+        return_loc = params.get('return_location', 'start')
+
+        return TaskPlan(
+            name=f"fetch_{obj}",
+            description=f"Fetch {obj} from {location}",
+            primitives=[
+                {"action": PrimitiveAction.SPEAK, "text": f"I'll fetch the {obj} from the {location}."},
+                {"action": PrimitiveAction.NAVIGATE, "target": location},
+                {"action": PrimitiveAction.SPEAK, "text": f"Arrived. Looking for the {obj}."},
+                {"action": PrimitiveAction.LOOK, "target": "scan"},  # Scan environment
+                {"action": PrimitiveAction.DETECT, "object": obj},
+                {"action": PrimitiveAction.APPROACH, "target": obj},
+                {"action": PrimitiveAction.GRASP, "object": obj},
+                {"action": PrimitiveAction.LIFT, "height": 0.3},  # 30cm lift
+                {"action": PrimitiveAction.SPEAK, "text": f"Got the {obj}. Returning."},
+                {"action": PrimitiveAction.NAVIGATE, "target": return_loc},
+                {"action": PrimitiveAction.SPEAK, "text": f"Here's the {obj}."},
+            ]
+        )
+
+    def _decompose_deliver(self, params: Dict[str, Any]) -> TaskPlan:
+        """
+        Decompose 'deliver X to Y' into primitives.
+
+        Params:
+            object: Object being held
+            destination: Where to place it
+            surface: Surface to place on (default: table)
+        """
+        obj = params.get('object', 'object')
+        destination = params.get('destination', 'living_room')
+        surface = params.get('surface', 'table')
+
+        return TaskPlan(
+            name=f"deliver_{obj}",
+            description=f"Deliver {obj} to {destination}",
+            primitives=[
+                {"action": PrimitiveAction.SPEAK, "text": f"Delivering the {obj} to the {destination}."},
+                {"action": PrimitiveAction.NAVIGATE, "target": destination},
+                {"action": PrimitiveAction.DETECT, "object": surface},
+                {"action": PrimitiveAction.APPROACH, "target": surface},
+                {"action": PrimitiveAction.LOWER, "height": 0.05},  # Lower near surface
+                {"action": PrimitiveAction.RELEASE},
+                {"action": PrimitiveAction.SPEAK, "text": f"Delivered."},
+            ]
+        )
+
+    def _decompose_tidy(self, params: Dict[str, Any]) -> TaskPlan:
+        """
+        Decompose 'tidy room' into primitives.
+
+        Params:
+            room: Room to tidy
+            items: List of items to organize (optional)
+        """
+        room = params.get('room', 'living_room')
+
+        return TaskPlan(
+            name=f"tidy_{room}",
+            description=f"Tidy the {room}",
+            primitives=[
+                {"action": PrimitiveAction.SPEAK, "text": f"I'll tidy the {room}."},
+                {"action": PrimitiveAction.NAVIGATE, "target": room},
+                {"action": PrimitiveAction.LOOK, "target": "scan"},
+                {"action": PrimitiveAction.DETECT, "object": "misplaced_items"},
+                # Loop would be handled by behavior tree
+                {"action": PrimitiveAction.SPEAK, "text": "Room tidied."},
+            ]
+        )
+
+    def _decompose_greet(self, params: Dict[str, Any]) -> TaskPlan:
+        """Decompose 'greet visitor' into primitives."""
+        location = params.get('location', 'entrance')
+
+        return TaskPlan(
+            name="greet_visitor",
+            description="Greet a visitor",
+            primitives=[
+                {"action": PrimitiveAction.NAVIGATE, "target": location},
+                {"action": PrimitiveAction.DETECT, "object": "person"},
+                {"action": PrimitiveAction.APPROACH, "target": "person", "distance": 1.5},
+                {"action": PrimitiveAction.SPEAK, "text": "Hello! Welcome. How can I help you?"},
+                {"action": PrimitiveAction.LISTEN},
+            ]
+        )
+
+
+# Example usage
+decomposer = TaskDecomposer()
+plan = decomposer.decompose('fetch', {
+    'object': 'red_cup',
+    'location': 'kitchen',
+    'return_location': 'living_room'
+})
+
+print(f"Task: {plan.name}")
+print(f"Description: {plan.description}")
+for i, primitive in enumerate(plan.primitives):
+    print(f"  {i+1}. {primitive['action'].value}: {primitive}")
+```
+
+---
+
+## Complete Autonomous Agent
+
+### Main Agent Node
+
+The main node orchestrates all subsystems:
+
+```python
+#!/usr/bin/env python3
+"""
+Complete autonomous humanoid agent for ROS 2.
+Integrates perception, locomotion, manipulation, and conversation.
+"""
+
+import rclpy
+from rclpy.node import Node
+from rclpy.action import ActionClient
+from rclpy.callback_groups import ReentrantCallbackGroup
+from rclpy.executors import MultiThreadedExecutor
+
+from std_msgs.msg import String, Bool
+from sensor_msgs.msg import Image, JointState
+from geometry_msgs.msg import Twist, PoseStamped
+from nav2_msgs.action import NavigateToPose
+
+import numpy as np
+import threading
+from typing import Optional, Dict, Any
+from dataclasses import dataclass
+from enum import Enum
+import time
+
+
+class AgentState(Enum):
+    """High-level agent state."""
+    IDLE = "idle"
+    LISTENING = "listening"
+    PLANNING = "planning"
+    EXECUTING = "executing"
+    ERROR = "error"
+    EMERGENCY_STOP = "emergency_stop"
+
+
+@dataclass
+class WorldModel:
+    """Agent's internal model of the world."""
+    robot_pose: Optional[PoseStamped] = None
+    detected_objects: Dict[str, PoseStamped] = None
+    current_location: str = "unknown"
+    held_object: Optional[str] = None
+    battery_level: float = 100.0
+    last_command: str = ""
+
+    def __post_init__(self):
+        if self.detected_objects is None:
+            self.detected_objects = {}
+
+
+class AutonomousHumanoidAgent(Node):
+    """
+    Main autonomous agent node.
+
+    Coordinates:
+    - Conversational interface (ASR/NLU/TTS)
+    - Visual perception (cameras, VLA)
+    - Navigation (Nav2)
+    - Manipulation (arm control)
+    - Locomotion (balance, gait)
+    """
+
+    def __init__(self):
+        super().__init__('autonomous_humanoid_agent')
+
+        # State
+        self.state = AgentState.IDLE
+        self.world_model = WorldModel()
+        self.emergency_stop = False
+
+        # Callback groups for parallel execution
+        self.perception_group = ReentrantCallbackGroup()
+        self.control_group = ReentrantCallbackGroup()
+
+        # === PERCEPTION SUBSYSTEM ===
+        self.image_sub = self.create_subscription(
+            Image,
+            '/camera/color/image_raw',
+            self._image_callback,
+            10,
+            callback_group=self.perception_group
+        )
+
+        self.object_detection_pub = self.create_publisher(
+            String,
+            '/perception/detected_objects',
+            10
+        )
+
+        # === LOCOMOTION SUBSYSTEM ===
+        self.cmd_vel_pub = self.create_publisher(Twist, '/cmd_vel', 10)
+        self.joint_state_sub = self.create_subscription(
+            JointState,
+            '/joint_states',
+            self._joint_state_callback,
+            10,
+            callback_group=self.control_group
+        )
+
+        # Navigation action client
+        self.nav_client = ActionClient(
+            self,
+            NavigateToPose,
+            'navigate_to_pose'
+        )
+
+        # === MANIPULATION SUBSYSTEM ===
+        self.gripper_pub = self.create_publisher(
+            String,
+            '/gripper/command',
+            10
+        )
+
+        # === CONVERSATIONAL SUBSYSTEM ===
+        self.speech_command_sub = self.create_subscription(
+            String,
+            '/speech/command',
+            self._speech_command_callback,
+            10
+        )
+
+        self.speech_response_pub = self.create_publisher(
+            String,
+            '/speech/response',
+            10
+        )
+
+        # === SAFETY ===
+        self.emergency_stop_sub = self.create_subscription(
+            Bool,
+            '/emergency_stop',
+            self._emergency_stop_callback,
+            10
+        )
+
+        # === STATUS ===
+        self.status_pub = self.create_publisher(
+            String,
+            '/agent/status',
+            10
+        )
+
+        # Heartbeat timer (1 Hz)
+        self.heartbeat_timer = self.create_timer(1.0, self._publish_heartbeat)
+
+        # Main loop timer (10 Hz)
+        self.main_loop_timer = self.create_timer(0.1, self._main_loop)
+
+        # Task queue
+        self.task_queue = []
+        self.current_task = None
+
+        self.get_logger().info('Autonomous humanoid agent initialized')
+        self._speak("Hello! I'm ready to help.")
+
+    # === CALLBACKS ===
+
+    def _image_callback(self, msg: Image):
+        """Process incoming camera images."""
+        if self.emergency_stop:
+            return
+
+        # Placeholder: integrate with VLA perception
+        # In real implementation:
+        # 1. Preprocess image
+        # 2. Run through CLIP/DINOv2 encoder
+        # 3. Detect and localize objects
+        # 4. Update world model
+        pass
+
+    def _joint_state_callback(self, msg: JointState):
+        """Update internal joint state."""
+        # Monitor for anomalies (e.g., joint limits, excessive torque)
+        pass
+
+    def _speech_command_callback(self, msg: String):
+        """Handle voice commands from conversational subsystem."""
+        command = msg.data.lower()
+        self.world_model.last_command = command
+
+        self.get_logger().info(f'Received command: {command}')
+
+        if self.emergency_stop:
+            self._speak("Emergency stop is active. Please clear the emergency first.")
+            return
+
+        # Parse and queue task
+        task = self._parse_command(command)
+        if task:
+            self.task_queue.append(task)
+            self._speak(f"Understood. {task['description']}")
+        else:
+            self._speak("I didn't understand that command. Please try again.")
+
+    def _emergency_stop_callback(self, msg: Bool):
+        """Handle emergency stop."""
+        self.emergency_stop = msg.data
+        if self.emergency_stop:
+            self.state = AgentState.EMERGENCY_STOP
+            self._halt_all_motion()
+            self.get_logger().warn('EMERGENCY STOP ACTIVATED')
+        else:
+            self.state = AgentState.IDLE
+            self.get_logger().info('Emergency stop cleared')
+
+    def _publish_heartbeat(self):
+        """Publish agent status heartbeat."""
+        status = String()
+        status.data = f"{self.state.value}:{self.world_model.current_location}"
+        self.status_pub.publish(status)
+
+    # === MAIN LOOP ===
+
+    def _main_loop(self):
+        """Main agent control loop."""
+        if self.emergency_stop:
+            return
+
+        # State machine
+        if self.state == AgentState.IDLE:
+            if self.task_queue:
+                self.current_task = self.task_queue.pop(0)
+                self.state = AgentState.PLANNING
+                self.get_logger().info(f"Starting task: {self.current_task['type']}")
+
+        elif self.state == AgentState.PLANNING:
+            # Plan task execution
+            plan = self._plan_task(self.current_task)
+            if plan:
+                self.current_task['plan'] = plan
+                self.state = AgentState.EXECUTING
+            else:
+                self._speak("I can't figure out how to do that.")
+                self.state = AgentState.IDLE
+
+        elif self.state == AgentState.EXECUTING:
+            # Execute current plan step
+            result = self._execute_step()
+            if result == 'complete':
+                self._speak("Task complete.")
+                self.current_task = None
+                self.state = AgentState.IDLE
+            elif result == 'failed':
+                self._speak("Task failed. Please help me.")
+                self.current_task = None
+                self.state = AgentState.ERROR
+
+    # === COMMAND PARSING ===
+
+    def _parse_command(self, command: str) -> Optional[Dict[str, Any]]:
+        """Parse voice command into structured task."""
+        # Simple pattern matching (would use NLU in production)
+
+        if 'fetch' in command or 'get' in command or 'bring' in command:
+            # Extract object and location
+            parts = command.split()
+            return {
+                'type': 'fetch',
+                'object': self._extract_object(command),
+                'location': self._extract_location(command),
+                'description': f"Fetching object from location"
+            }
+
+        elif 'go to' in command or 'navigate' in command:
+            return {
+                'type': 'navigate',
+                'target': self._extract_location(command),
+                'description': f"Navigating to location"
+            }
+
+        elif 'stop' in command:
+            self._halt_all_motion()
+            return None
+
+        elif 'status' in command:
+            self._report_status()
+            return None
+
+        return None
+
+    def _extract_object(self, command: str) -> str:
+        """Extract object name from command."""
+        objects = ['cup', 'bottle', 'book', 'phone', 'remote', 'keys']
+        for obj in objects:
+            if obj in command:
+                return obj
+        return 'object'
+
+    def _extract_location(self, command: str) -> str:
+        """Extract location from command."""
+        locations = ['kitchen', 'bedroom', 'living room', 'bathroom', 'office']
+        for loc in locations:
+            if loc in command:
+                return loc.replace(' ', '_')
+        return 'unknown'
+
+    # === TASK PLANNING ===
+
+    def _plan_task(self, task: Dict[str, Any]) -> Optional[list]:
+        """Create execution plan for task."""
+        task_type = task.get('type')
+
+        if task_type == 'fetch':
+            return [
+                ('navigate', {'target': task.get('location', 'kitchen')}),
+                ('search', {'object': task.get('object', 'object')}),
+                ('approach', {}),
+                ('grasp', {}),
+                ('navigate', {'target': 'start'}),
+            ]
+
+        elif task_type == 'navigate':
+            return [
+                ('navigate', {'target': task.get('target', 'living_room')}),
+            ]
+
+        return None
+
+    # === TASK EXECUTION ===
+
+    def _execute_step(self) -> str:
+        """Execute current plan step. Returns 'running', 'complete', or 'failed'."""
+        if not self.current_task or 'plan' not in self.current_task:
+            return 'failed'
+
+        plan = self.current_task['plan']
+        step_idx = self.current_task.get('step_index', 0)
+
+        if step_idx >= len(plan):
+            return 'complete'
+
+        step_type, params = plan[step_idx]
+
+        # Execute based on step type
+        # Placeholder - would dispatch to actual subsystems
+
+        # For demo, auto-advance steps
+        self.current_task['step_index'] = step_idx + 1
+
+        if self.current_task['step_index'] >= len(plan):
+            return 'complete'
+
+        return 'running'
+
+    # === MOTION CONTROL ===
+
+    def _halt_all_motion(self):
+        """Stop all robot motion immediately."""
+        # Zero velocity
+        twist = Twist()
+        self.cmd_vel_pub.publish(twist)
+
+        # Stop gripper
+        self.gripper_pub.publish(String(data='stop'))
+
+        self.get_logger().info('All motion halted')
+
+    # === SPEECH ===
+
+    def _speak(self, text: str):
+        """Send text to TTS subsystem."""
+        msg = String()
+        msg.data = text
+        self.speech_response_pub.publish(msg)
+        self.get_logger().info(f'Speaking: {text}')
+
+    def _report_status(self):
+        """Report current agent status."""
+        status = (
+            f"I'm currently {self.state.value}. "
+            f"Location: {self.world_model.current_location}. "
+            f"Battery: {self.world_model.battery_level:.0f} percent."
+        )
+        if self.world_model.held_object:
+            status += f" I'm holding a {self.world_model.held_object}."
+        self._speak(status)
+
+
+def main(args=None):
+    rclpy.init(args=args)
+
+    agent = AutonomousHumanoidAgent()
+
+    # Use multi-threaded executor for parallel callbacks
+    executor = MultiThreadedExecutor(num_threads=4)
+    executor.add_node(agent)
+
+    try:
+        executor.spin()
+    except KeyboardInterrupt:
+        pass
+    finally:
+        agent.destroy_node()
+        rclpy.shutdown()
+
+
+if __name__ == '__main__':
+    main()
+```
+
+---
+
+## Subsystem Coordination
+
+### Timing and Synchronization
+
+Different subsystems run at different rates:
+
+```python
+from dataclasses import dataclass
+from typing import Dict, Callable
+import time
+
+
+@dataclass
+class SubsystemTiming:
+    """Timing requirements for each subsystem."""
+    name: str
+    rate_hz: float
+    max_latency_ms: float
+    priority: int  # Lower = higher priority
+
+
+# Typical timing requirements
+SUBSYSTEM_TIMING = {
+    'safety_monitor': SubsystemTiming('safety_monitor', 100.0, 10.0, 0),
+    'balance_control': SubsystemTiming('balance_control', 500.0, 2.0, 1),
+    'locomotion': SubsystemTiming('locomotion', 100.0, 10.0, 2),
+    'manipulation': SubsystemTiming('manipulation', 50.0, 20.0, 3),
+    'perception': SubsystemTiming('perception', 30.0, 50.0, 4),
+    'navigation': SubsystemTiming('navigation', 20.0, 100.0, 5),
+    'conversation': SubsystemTiming('conversation', 10.0, 200.0, 6),
+    'planning': SubsystemTiming('planning', 5.0, 500.0, 7),
+}
+
+
+class TimingMonitor:
+    """Monitor subsystem timing compliance."""
+
+    def __init__(self):
+        self.last_tick: Dict[str, float] = {}
+        self.violations: Dict[str, int] = {}
+
+    def record_tick(self, subsystem: str):
+        """Record a subsystem tick."""
+        current = time.time()
+
+        if subsystem in self.last_tick:
+            elapsed_ms = (current - self.last_tick[subsystem]) * 1000
+            expected_period_ms = 1000.0 / SUBSYSTEM_TIMING[subsystem].rate_hz
+
+            # Check for timing violation (> 20% over period)
+            if elapsed_ms > expected_period_ms * 1.2:
+                self.violations[subsystem] = self.violations.get(subsystem, 0) + 1
+
+        self.last_tick[subsystem] = current
+
+    def get_violations(self) -> Dict[str, int]:
+        """Get timing violation counts."""
+        return self.violations.copy()
+```
+
+### Message Prioritization
+
+Critical messages take priority:
+
+```python
+import rclpy
+from rclpy.node import Node
+from rclpy.qos import QoSProfile, ReliabilityPolicy, DurabilityPolicy, HistoryPolicy
+
+
+class QoSProfiles:
+    """Predefined QoS profiles for different message types."""
+
+    # Safety-critical: must never be lost
+    SAFETY = QoSProfile(
+        reliability=ReliabilityPolicy.RELIABLE,
+        durability=DurabilityPolicy.TRANSIENT_LOCAL,
+        history=HistoryPolicy.KEEP_LAST,
+        depth=10
+    )
+
+    # Control: low latency, ok to drop old
+    CONTROL = QoSProfile(
+        reliability=ReliabilityPolicy.BEST_EFFORT,
+        durability=DurabilityPolicy.VOLATILE,
+        history=HistoryPolicy.KEEP_LAST,
+        depth=1
+    )
+
+    # Sensor: high bandwidth, best effort
+    SENSOR = QoSProfile(
+        reliability=ReliabilityPolicy.BEST_EFFORT,
+        durability=DurabilityPolicy.VOLATILE,
+        history=HistoryPolicy.KEEP_LAST,
+        depth=5
+    )
+
+    # Status: reliable but not urgent
+    STATUS = QoSProfile(
+        reliability=ReliabilityPolicy.RELIABLE,
+        durability=DurabilityPolicy.VOLATILE,
+        history=HistoryPolicy.KEEP_LAST,
+        depth=10
+    )
+```
+
+---
+
+## Common Failure Modes
+
+### 1. Subsystem Communication Failures
+
+**Symptoms**: Actions don't execute, robot appears frozen, timeouts.
+
+**Diagnosis**:
+```bash
+# Check if topics are being published
+ros2 topic hz /cmd_vel
+ros2 topic hz /joint_states
+
+# Check for node crashes
+ros2 node list
+
+# Monitor diagnostics
+ros2 topic echo /diagnostics
+```
+
+**Resolution**:
+- Implement heartbeat monitoring for all subsystems
+- Add watchdog timers that trigger safe fallback behavior
+- Design for graceful degradation (limp mode)
+
+### 2. Perception-Action Mismatch
+
+**Symptoms**: Robot reaches for wrong location, grasps fail, navigation errors.
+
+**Diagnosis**:
+```python
+def diagnose_perception_action_mismatch(
+    perceived_pose: PoseStamped,
+    actual_pose: PoseStamped
+) -> Dict[str, float]:
+    """Measure perception accuracy against ground truth."""
+    import numpy as np
+
+    p_pos = np.array([
+        perceived_pose.pose.position.x,
+        perceived_pose.pose.position.y,
+        perceived_pose.pose.position.z
+    ])
+
+    a_pos = np.array([
+        actual_pose.pose.position.x,
+        actual_pose.pose.position.y,
+        actual_pose.pose.position.z
+    ])
+
+    position_error = np.linalg.norm(p_pos - a_pos)
+
+    return {
+        'position_error_m': position_error,
+        'acceptable': position_error < 0.05  # 5cm threshold
+    }
+```
+
+**Resolution**:
+- Calibrate camera extrinsics regularly
+- Use visual servoing for final approach
+- Add sanity checks before action execution
+
+### 3. Task Deadlock
+
+**Symptoms**: Robot stuck waiting for condition that never occurs.
+
+**Diagnosis**:
+```python
+class DeadlockDetector:
+    """Detect potential task deadlocks."""
+
+    def __init__(self, timeout_sec: float = 30.0):
+        self.timeout_sec = timeout_sec
+        self.task_start_times: Dict[str, float] = {}
+
+    def start_task(self, task_id: str):
+        self.task_start_times[task_id] = time.time()
+
+    def check_deadlock(self, task_id: str) -> bool:
+        if task_id not in self.task_start_times:
+            return False
+
+        elapsed = time.time() - self.task_start_times[task_id]
+        return elapsed > self.timeout_sec
+
+    def end_task(self, task_id: str):
+        if task_id in self.task_start_times:
+            del self.task_start_times[task_id]
+```
+
+**Resolution**:
+- Add timeouts to all blocking operations
+- Implement task abort mechanisms
+- Design behavior trees with failure branches
+
+### 4. State Inconsistency
+
+**Symptoms**: Robot reports incorrect state, repeated actions, missed steps.
+
+**Diagnosis**:
+```python
+def validate_state_consistency(world_model: WorldModel) -> list:
+    """Check world model for inconsistencies."""
+    issues = []
+
+    # Check for impossible states
+    if world_model.held_object and world_model.current_location == 'unknown':
+        issues.append("Holding object but location unknown")
+
+    # Check for stale data
+    for obj, pose in world_model.detected_objects.items():
+        if pose.header.stamp is None:
+            issues.append(f"Object {obj} has no timestamp")
+
+    return issues
+```
+
+**Resolution**:
+- Use state machines with explicit transitions
+- Add state validation after each action
+- Implement state recovery procedures
+
+### 5. Integration Testing Failures
+
+**Symptoms**: Subsystems work individually but fail when combined.
+
+**Diagnosis**:
+```python
+class IntegrationTestSuite:
+    """Test subsystem integration."""
+
+    def test_perception_to_manipulation(self):
+        """Test perception output feeds manipulation correctly."""
+        # 1. Place known object in view
+        # 2. Verify perception detects it
+        # 3. Verify manipulation receives correct pose
+        # 4. Verify grasp succeeds
+        pass
+
+    def test_conversation_to_navigation(self):
+        """Test voice command triggers navigation."""
+        # 1. Send voice command "go to kitchen"
+        # 2. Verify NLU parses correctly
+        # 3. Verify navigation goal sent
+        # 4. Verify robot arrives
+        pass
+```
+
+**Resolution**:
+- Build integration tests for each subsystem pair
+- Use recorded test scenarios (rosbag)
+- Test failure recovery paths
+
+---
+
+## Hardware and Compute Requirements
+
+| Requirement | Minimum | Recommended | Production |
+|-------------|---------|-------------|------------|
+| Operating System | Ubuntu 22.04 LTS | Ubuntu 22.04 LTS | Ubuntu 22.04 LTS |
+| CPU | 8 cores | 12+ cores | 16+ cores |
+| RAM | 32 GB | 64 GB | 128 GB |
+| GPU | NVIDIA RTX 3060 (12GB) | NVIDIA RTX 3080 (12GB) | NVIDIA RTX 4090 (24GB) |
+| Storage | 256 GB SSD | 512 GB NVMe | 1 TB NVMe |
+| Network | Gigabit Ethernet | Gigabit Ethernet | 10GbE |
+
+**Subsystem Resource Allocation**:
+
+| Subsystem | CPU Cores | GPU Memory | RAM |
+|-----------|-----------|------------|-----|
+| Perception (VLA) | 2 | 6 GB | 8 GB |
+| Navigation (Nav2) | 2 | - | 4 GB |
+| Manipulation | 1 | - | 2 GB |
+| Locomotion | 2 | - | 2 GB |
+| Conversation | 1 | 4 GB | 4 GB |
+| Simulation | 2 | 6 GB | 16 GB |
+| System | 2 | - | 4 GB |
+
+**For Isaac Sim with Full Agent**:
+- RTX 4080+ recommended
+- 64 GB RAM minimum
+- NVMe SSD for asset loading
+
+---
+
+## Launch Configuration
+
+### Complete System Launch
+
+```python
+# File: launch/autonomous_agent.launch.py
+from launch import LaunchDescription
+from launch.actions import DeclareLaunchArgument, GroupAction, IncludeLaunchDescription
+from launch.conditions import IfCondition
+from launch.launch_description_sources import PythonLaunchDescriptionSource
+from launch.substitutions import LaunchConfiguration, PathJoinSubstitution
+from launch_ros.actions import Node
+from launch_ros.substitutions import FindPackageShare
+
+
+def generate_launch_description():
+    # Arguments
+    use_sim = LaunchConfiguration('use_sim', default='true')
+    robot_model = LaunchConfiguration('robot_model', default='unitree_h1')
+
+    return LaunchDescription([
+        # Declare arguments
+        DeclareLaunchArgument('use_sim', default_value='true'),
+        DeclareLaunchArgument('robot_model', default_value='unitree_h1'),
+
+        # Subsystem Registry
+        Node(
+            package='autonomous_agent',
+            executable='subsystem_registry',
+            name='subsystem_registry',
+            output='screen'
+        ),
+
+        # Perception Subsystem
+        Node(
+            package='autonomous_agent',
+            executable='perception_node',
+            name='perception',
+            output='screen',
+            parameters=[{
+                'model': 'clip-vit-base',
+                'device': 'cuda'
+            }]
+        ),
+
+        # Locomotion Subsystem
+        Node(
+            package='autonomous_agent',
+            executable='locomotion_node',
+            name='locomotion',
+            output='screen'
+        ),
+
+        # Manipulation Subsystem
+        Node(
+            package='autonomous_agent',
+            executable='manipulation_node',
+            name='manipulation',
+            output='screen'
+        ),
+
+        # Conversation Subsystem
+        Node(
+            package='autonomous_agent',
+            executable='conversation_node',
+            name='conversation',
+            output='screen',
+            parameters=[{
+                'whisper_model': 'small',
+                'wake_word': 'hey robot'
+            }]
+        ),
+
+        # Main Agent
+        Node(
+            package='autonomous_agent',
+            executable='autonomous_agent',
+            name='autonomous_humanoid_agent',
+            output='screen'
+        ),
+
+        # Nav2 (when using navigation)
+        IncludeLaunchDescription(
+            PythonLaunchDescriptionSource([
+                PathJoinSubstitution([
+                    FindPackageShare('nav2_bringup'),
+                    'launch',
+                    'navigation_launch.py'
+                ])
+            ])
+        ),
+    ])
+```
+
+---
+
+## Summary
+
+This capstone chapter integrated all concepts from the textbook:
+
+1. **Physical AI Foundations (Ch.1)**: Embodied intelligence principles guide the agent architecture
+2. **ROS 2 (Ch.2)**: Inter-subsystem communication via topics, services, and actions
+3. **Digital Twins (Ch.3)**: Gazebo simulation for safe development and testing
+4. **NVIDIA Isaac (Ch.4)**: GPU-accelerated simulation for perception training
+5. **Vision-Language-Action (Ch.5)**: Perception subsystem for understanding environment
+6. **Locomotion & Manipulation (Ch.6)**: Motion control for navigation and grasping
+7. **Conversational Robotics (Ch.7)**: Natural language interface for human interaction
+
+**Key Takeaways**:
+- **Subsystem isolation** enables independent development and fault tolerance
+- **Behavior trees** provide reactive, hierarchical task orchestration
+- **State management** across subsystems requires careful synchronization
+- **Failure handling** at every level is critical for autonomous operation
+- **Observability** through diagnostics enables effective debugging
+
+---
+
+## Knowledge Check
+
+<Quiz
+  questions={[
+    {
+      question: "In the autonomous agent architecture, which component is responsible for deciding what action to take based on voice commands and sensor data?",
+      options: [
+        "Perception subsystem",
+        "Behavior tree executive",
+        "ROS 2 communication layer",
+        "Locomotion subsystem"
+      ],
+      correctIndex: 1,
+      explanation: "The behavior tree executive layer takes inputs from the conversational interface (voice commands) and perception subsystem (sensor data) to decide which actions to execute. It orchestrates the flow between all other subsystems."
+    },
+    {
+      question: "What is the primary advantage of using a Selector node over a Sequence node in a behavior tree?",
+      options: [
+        "Selector runs children in parallel for speed",
+        "Selector tries alternatives until one succeeds, providing fallback behavior",
+        "Selector executes all children regardless of failure",
+        "Selector has lower memory requirements"
+      ],
+      correctIndex: 1,
+      explanation: "A Selector node tries each child in order until one succeeds, then returns SUCCESS. This provides natural fallback behavior - if the preferred approach fails, alternatives are automatically tried. A Sequence requires all children to succeed."
+    },
+    {
+      question: "Why should safety-critical subsystems like balance control run at higher frequencies than perception?",
+      options: [
+        "Safety systems need more compute power",
+        "Fast response prevents falls; perception can tolerate latency",
+        "Higher frequency uses less CPU",
+        "Perception doesn't affect safety"
+      ],
+      correctIndex: 1,
+      explanation: "Balance control must respond to disturbances within milliseconds to prevent falls - running at 500Hz allows 2ms response time. Perception running at 30Hz (33ms) is acceptable because objects don't move as fast as the robot might tip."
+    },
+    {
+      question: "What is the most likely cause if a robot executes voice commands but often grasps at the wrong location?",
+      options: [
+        "Speech recognition error",
+        "Behavior tree misconfiguration",
+        "Camera-to-robot calibration error",
+        "Network latency"
+      ],
+      correctIndex: 2,
+      explanation: "If the robot correctly understands commands but grasps at wrong locations, the perception is detecting objects in camera coordinates that aren't correctly transformed to robot coordinates. This indicates camera extrinsic calibration error."
+    },
+    {
+      question: "Which ROS 2 QoS profile should be used for emergency stop messages?",
+      options: [
+        "BEST_EFFORT with VOLATILE durability",
+        "RELIABLE with TRANSIENT_LOCAL durability",
+        "BEST_EFFORT with KEEP_LAST depth 1",
+        "RELIABLE with KEEP_LAST depth 100"
+      ],
+      correctIndex: 1,
+      explanation: "Emergency stop messages must NEVER be lost (RELIABLE) and late-joining subscribers must receive the current state (TRANSIENT_LOCAL). This ensures that even if a node restarts, it immediately knows the emergency stop state."
+    },
+    {
+      question: "In the task decomposition pattern, why is 'fetch' decomposed into multiple primitive actions rather than executed as a single command?",
+      options: [
+        "Single commands are not supported by ROS 2",
+        "Primitives allow monitoring, recovery, and reuse across different tasks",
+        "It's faster to run many small commands",
+        "The robot hardware requires separate commands"
+      ],
+      correctIndex: 1,
+      explanation: "Decomposing into primitives allows: monitoring progress at each step, recovering from failures at specific points, and reusing primitives across different high-level tasks (both 'fetch' and 'tidy' use 'grasp'). This makes the system more robust and maintainable."
+    }
+  ]}
+/>
+
+---
+
+## Congratulations!
+
+You have completed the **Physical Humanoid Robots** textbook. You now have the foundational knowledge to:
+
+- Design Physical AI systems with embodied intelligence principles
+- Build robotic applications using ROS 2 Humble/Iron
+- Create digital twins in Gazebo and NVIDIA Isaac Sim
+- Implement vision-language-action perception pipelines
+- Control humanoid locomotion and manipulation
+- Build natural language interfaces for robots
+- Integrate all subsystems into complete autonomous agents
+
+**Your Next Steps**:
+
+1. **Build a simulation environment** - Start with Gazebo, add a Unitree H1 model
+2. **Implement one subsystem** - Choose perception, locomotion, or conversation
+3. **Add behavior tree control** - Connect your subsystem to task execution
+4. **Integrate incrementally** - Add subsystems one at a time, test thoroughly
+5. **Deploy to hardware** - When simulation works, transfer to real robot
+
+The future of robotics is being built by engineers who can bridge AI, simulation, and physical systems. You're now equipped to be part of that future.
+
+**Welcome to Physical AI.**
