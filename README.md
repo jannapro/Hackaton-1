@@ -4,9 +4,7 @@ An AI-Native Textbook for Physical AI and Humanoid Robotics, built with Docusaur
 
 ## Demo
 
-[![Watch the demo](https://cdn.loom.com/sessions/thumbnails/3ccb5b2b32924cfabaea272fa6b36928-with-play.gif)](https://www.loom.com/share/3ccb5b2b32924cfabaea272fa6b36928)
-
-[Watch my Hackathon 1 Demo here](https://www.loom.com/share/3ccb5b2b32924cfabaea272fa6b36928)
+[Watch my Hackathon 1 Demo here](https://www.loom.com/share/3e7461291dec4b63a3dd2f0fc2e949f4)
 
 ---
 
