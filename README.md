@@ -1,4 +1,14 @@
-# Website
+# Hackathon 1 — Physical Humanoid Robots Textbook
+
+An AI-Native Textbook for Physical AI and Humanoid Robotics, built with Docusaurus.
+
+## Demo
+
+[![Watch the demo](https://cdn.loom.com/sessions/thumbnails/3ccb5b2b32924cfabaea272fa6b36928-with-play.gif)](https://www.loom.com/share/3ccb5b2b32924cfabaea272fa6b36928)
+
+[Watch the full demo on Loom](https://www.loom.com/share/3ccb5b2b32924cfabaea272fa6b36928)
+
+---
 
 This website is built using [Docusaurus](https://docusaurus.io/), a modern static website generator.
 
