@@ -8,6 +8,7 @@
 
 import React from 'react';
 import { useLocation } from '@docusaurus/router';
+import useDocusaurusContext from '@docusaurus/useDocusaurusContext';
 import { useAuth } from '../contexts/AuthContext';
 import AuthPage from './AuthPage';
 
@@ -35,10 +36,12 @@ const styles = {
 
 export default function ProtectedRoute({ children }: ProtectedRouteProps): JSX.Element {
   const { pathname } = useLocation();
+  const { siteConfig: { baseUrl } } = useDocusaurusContext();
   const { user, loading } = useAuth();
 
   // Landing page is always public — no login required
-  if (pathname === '/') {
+  // Handles both Vercel (baseUrl='/') and local dev (baseUrl='/physical-humanoid-robots-textbook/')
+  if (pathname === '/' || pathname === baseUrl) {
     return <>{children}</>;
   }
 
