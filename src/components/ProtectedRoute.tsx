@@ -2,11 +2,12 @@
  * Protected Route Component
  *
  * Wraps content that requires authentication.
- * Shows loading spinner while checking auth state.
- * Redirects to AuthPage if not authenticated.
+ * The landing page (/) is always public — no login required.
+ * All other routes require authentication.
  */
 
 import React from 'react';
+import { useLocation } from '@docusaurus/router';
 import { useAuth } from '../contexts/AuthContext';
 import AuthPage from './AuthPage';
 
@@ -33,7 +34,13 @@ const styles = {
 };
 
 export default function ProtectedRoute({ children }: ProtectedRouteProps): JSX.Element {
+  const { pathname } = useLocation();
   const { user, loading } = useAuth();
+
+  // Landing page is always public — no login required
+  if (pathname === '/') {
+    return <>{children}</>;
+  }
 
   // Show loading spinner while checking auth state
   if (loading) {
@@ -55,6 +62,5 @@ export default function ProtectedRoute({ children }: ProtectedRouteProps): JSX.E
     return <AuthPage />;
   }
 
-  // User is authenticated, show protected content
   return <>{children}</>;
 }

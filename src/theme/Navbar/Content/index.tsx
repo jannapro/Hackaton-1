@@ -1,5 +1,5 @@
 /**
- * Swizzled Navbar Content to add Language Switcher and User Menu.
+ * Swizzled Navbar Content — adds Language Switcher, User Menu, and optional Login button.
  */
 
 import React from 'react';
@@ -14,8 +14,10 @@ import NavbarMobileSidebarToggle from '@theme/Navbar/MobileSidebar/Toggle';
 import NavbarLogo from '@theme/Navbar/Logo';
 import NavbarSearch from '@theme/Navbar/Search';
 import BrowserOnly from '@docusaurus/BrowserOnly';
+import Link from '@docusaurus/Link';
 import UserMenu from '@site/src/components/UserMenu';
 import LanguageSwitcher from '@site/src/components/LanguageSwitcher';
+import { useAuth } from '@site/src/contexts/AuthContext';
 import styles from './styles.module.css';
 
 function useNavbarItems() {
@@ -30,9 +32,7 @@ function NavbarItems({ items }: { items: any[] }) {
           key={i}
           onError={(error) =>
             new Error(
-              `A theme navbar item failed to render.
-Please double-check the following navbar item (themeConfig.navbar.items) of your Docusaurus config:
-${JSON.stringify(item, null, 2)}`,
+              `A theme navbar item failed to render.\nPlease double-check the following navbar item (themeConfig.navbar.items) of your Docusaurus config:\n${JSON.stringify(item, null, 2)}`,
               { cause: error }
             )
           }
@@ -44,13 +44,7 @@ ${JSON.stringify(item, null, 2)}`,
   );
 }
 
-function NavbarContentLayout({
-  left,
-  right,
-}: {
-  left: React.ReactNode;
-  right: React.ReactNode;
-}) {
+function NavbarContentLayout({ left, right }: { left: React.ReactNode; right: React.ReactNode }) {
   return (
     <div className="navbar__inner">
       <div className="navbar__items">{left}</div>
@@ -59,16 +53,41 @@ function NavbarContentLayout({
   );
 }
 
+function LoginButton() {
+  const { user } = useAuth();
+  if (user) return null;
+  return (
+    <Link
+      to="/login"
+      style={{
+        fontSize: '0.8rem',
+        fontWeight: 600,
+        padding: '5px 14px',
+        borderRadius: '6px',
+        border: '1px solid rgba(0,212,255,0.5)',
+        color: '#00d4ff',
+        textDecoration: 'none',
+        marginLeft: '8px',
+        transition: 'all 0.2s',
+        letterSpacing: '0.03em',
+      }}
+      onMouseEnter={e => {
+        (e.currentTarget as HTMLElement).style.background = 'rgba(0,212,255,0.1)';
+      }}
+      onMouseLeave={e => {
+        (e.currentTarget as HTMLElement).style.background = 'transparent';
+      }}
+    >
+      Login
+    </Link>
+  );
+}
+
 export default function NavbarContent(): JSX.Element {
   const mobileSidebar = useNavbarMobileSidebar();
-
   const items = useNavbarItems();
-  // Filter out custom-languageSwitcher from items (we'll add it manually)
-  const filteredItems = items.filter(
-    (item: any) => item.type !== 'custom-languageSwitcher'
-  );
+  const filteredItems = items.filter((item: any) => item.type !== 'custom-languageSwitcher');
   const [leftItems, rightItems] = splitNavbarItems(filteredItems);
-
   const searchBarItem = items.find((item: any) => item.type === 'search');
 
   return (
@@ -83,9 +102,8 @@ export default function NavbarContent(): JSX.Element {
       right={
         <>
           <NavbarItems items={rightItems} />
-          {/* Add User Menu (only renders when authenticated) */}
           <BrowserOnly>{() => <UserMenu />}</BrowserOnly>
-          {/* Language Switcher */}
+          <BrowserOnly>{() => <LoginButton />}</BrowserOnly>
           <LanguageSwitcher />
           <NavbarColorModeToggle className={styles.colorModeToggle} />
           {!searchBarItem && (
