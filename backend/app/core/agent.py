@@ -14,11 +14,14 @@ from .retrieval import get_retrieval_service
 settings = get_settings()
 set_default_openai_key(settings.openai_api_key)
 
-# Session storage directory
-SESSION_DB_PATH = os.path.join(
+# Session storage directory — use /tmp on read-only filesystems (e.g. Vercel)
+_default_db_dir = os.path.join(
     os.path.dirname(os.path.dirname(os.path.dirname(__file__))),
     "data",
-    "sessions.db"
+)
+SESSION_DB_PATH = os.environ.get(
+    "SESSION_DB_PATH",
+    os.path.join("/tmp" if not os.access(_default_db_dir, os.W_OK) else _default_db_dir, "sessions.db"),
 )
 
 # Ensure data directory exists

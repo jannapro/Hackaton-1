@@ -16,9 +16,9 @@ const config: Config = {
     v4: true, // Improve compatibility with the upcoming Docusaurus v4
   },
 
-  // T012: Site metadata - T008: Deployment target (GitHub Pages)
-  url: 'https://jannapro.github.io',
-  baseUrl: '/physical-humanoid-robots-textbook/',
+  // T012: Site metadata - supports both GitHub Pages and Vercel
+  url: process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'https://jannapro.github.io',
+  baseUrl: process.env.VERCEL_URL ? '/' : '/physical-humanoid-robots-textbook/',
 
   // GitHub pages deployment config
   organizationName: 'jannapro',

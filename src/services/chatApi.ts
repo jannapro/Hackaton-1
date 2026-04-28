@@ -33,16 +33,17 @@ export interface HealthResponse {
   chunk_count: number;
 }
 
-// Get API URL from environment or default to localhost
+// Get API URL from Docusaurus config or default to localhost
+// eslint-disable-next-line @typescript-eslint/no-var-requires
 const getApiUrl = (): string => {
-  // Check for Docusaurus custom field
-  if (typeof window !== 'undefined') {
-    const docusaurusConfig = (window as any).docusaurus;
-    if (docusaurusConfig?.siteConfig?.customFields?.chatbotApiUrl) {
-      return docusaurusConfig.siteConfig.customFields.chatbotApiUrl;
-    }
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const siteConfig = require('@generated/docusaurus.config').default;
+    const url = siteConfig?.customFields?.chatbotApiUrl;
+    if (url && typeof url === 'string') return url;
+  } catch {
+    // Not in a Docusaurus build context
   }
-  // Default for development
   return 'http://localhost:8000';
 };
 
