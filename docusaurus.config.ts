@@ -79,7 +79,7 @@ const config: Config = {
 
     // T015: Light/dark theme toggle
     colorMode: {
-      defaultMode: 'light',
+      defaultMode: 'dark',
       disableSwitch: false,
       respectPrefersColorScheme: true,
     },
