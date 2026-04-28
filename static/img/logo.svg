@@ -1,73 +1,45 @@
 <svg width="200" height="200" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
   <defs>
-    <radialGradient id="bgGlow" cx="50%" cy="50%" r="50%">
-      <stop offset="0%" stop-color="#00d4ff" stop-opacity="0.18"/>
-      <stop offset="100%" stop-color="#0a0a1a" stop-opacity="0"/>
-    </radialGradient>
-    <linearGradient id="bookGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+    <linearGradient id="spineGrad" x1="0%" y1="0%" x2="100%" y2="100%">
       <stop offset="0%" stop-color="#00d4ff"/>
       <stop offset="100%" stop-color="#7c3aed"/>
     </linearGradient>
-    <filter id="glow" x="-30%" y="-30%" width="160%" height="160%">
-      <feGaussianBlur stdDeviation="4" result="coloredBlur"/>
-      <feMerge>
-        <feMergeNode in="coloredBlur"/>
-        <feMergeNode in="SourceGraphic"/>
-      </feMerge>
-    </filter>
-    <filter id="glowStrong" x="-50%" y="-50%" width="200%" height="200%">
-      <feGaussianBlur stdDeviation="7" result="coloredBlur"/>
-      <feMerge>
-        <feMergeNode in="coloredBlur"/>
-        <feMergeNode in="SourceGraphic"/>
-      </feMerge>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="3.5" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
     </filter>
   </defs>
 
-  <!-- Background glow circle -->
-  <circle cx="100" cy="100" r="80" fill="url(#bgGlow)"/>
+  <!-- Left page -->
+  <path d="M30 50 C30 44 35 40 41 40 L98 40 L98 162 L41 162 C35 162 30 158 30 152 Z"
+        fill="rgba(0,212,255,0.07)" stroke="#00d4ff" stroke-width="4"
+        stroke-linejoin="round" filter="url(#glow)"/>
 
-  <!-- Outer ring -->
-  <circle cx="100" cy="100" r="78" fill="none" stroke="#00d4ff" stroke-width="1" stroke-opacity="0.25"/>
-  <circle cx="100" cy="100" r="72" fill="none" stroke="#00d4ff" stroke-width="0.5" stroke-opacity="0.12"/>
+  <!-- Right page -->
+  <path d="M170 50 C170 44 165 40 159 40 L102 40 L102 162 L159 162 C165 162 170 158 170 152 Z"
+        fill="rgba(124,58,237,0.07)" stroke="#7c3aed" stroke-width="4"
+        stroke-linejoin="round" filter="url(#glow)"/>
 
-  <!-- Book body with glow filter -->
-  <g filter="url(#glow)">
-    <!-- Left page -->
-    <path d="M42 62 C42 58 45 55 49 55 L97 55 L97 145 L49 145 C45 145 42 142 42 138 Z"
-          fill="#0a0a1a" stroke="url(#bookGrad)" stroke-width="2.5" stroke-linejoin="round"/>
+  <!-- Spine -->
+  <line x1="100" y1="40" x2="100" y2="162" stroke="url(#spineGrad)" stroke-width="4" filter="url(#glow)"/>
 
-    <!-- Right page -->
-    <path d="M158 62 C158 58 155 55 151 55 L103 55 L103 145 L151 145 C155 145 158 142 158 138 Z"
-          fill="#0a0a1a" stroke="url(#bookGrad)" stroke-width="2.5" stroke-linejoin="round"/>
+  <!-- Page lines left (cyan) -->
+  <line x1="44" y1="68"  x2="90" y2="68"  stroke="#00d4ff" stroke-width="3" stroke-linecap="round" stroke-opacity="0.9"/>
+  <line x1="44" y1="84"  x2="90" y2="84"  stroke="#00d4ff" stroke-width="3" stroke-linecap="round" stroke-opacity="0.9"/>
+  <line x1="44" y1="100" x2="90" y2="100" stroke="#00d4ff" stroke-width="3" stroke-linecap="round" stroke-opacity="0.9"/>
+  <line x1="44" y1="116" x2="90" y2="116" stroke="#00d4ff" stroke-width="3" stroke-linecap="round" stroke-opacity="0.9"/>
+  <line x1="44" y1="132" x2="72" y2="132" stroke="#00d4ff" stroke-width="3" stroke-linecap="round" stroke-opacity="0.6"/>
 
-    <!-- Spine center line -->
-    <line x1="100" y1="55" x2="100" y2="145" stroke="url(#bookGrad)" stroke-width="2.5"/>
+  <!-- Page lines right (purple) -->
+  <line x1="110" y1="68"  x2="156" y2="68"  stroke="#a855f7" stroke-width="3" stroke-linecap="round" stroke-opacity="0.9"/>
+  <line x1="110" y1="84"  x2="156" y2="84"  stroke="#a855f7" stroke-width="3" stroke-linecap="round" stroke-opacity="0.9"/>
+  <line x1="110" y1="100" x2="156" y2="100" stroke="#a855f7" stroke-width="3" stroke-linecap="round" stroke-opacity="0.9"/>
+  <line x1="110" y1="116" x2="156" y2="116" stroke="#a855f7" stroke-width="3" stroke-linecap="round" stroke-opacity="0.9"/>
+  <line x1="110" y1="132" x2="138" y2="132" stroke="#a855f7" stroke-width="3" stroke-linecap="round" stroke-opacity="0.6"/>
 
-    <!-- Page lines - left side -->
-    <line x1="55" y1="75" x2="90" y2="75" stroke="#00d4ff" stroke-width="1.5" stroke-opacity="0.6" stroke-linecap="round"/>
-    <line x1="55" y1="87" x2="90" y2="87" stroke="#00d4ff" stroke-width="1.5" stroke-opacity="0.6" stroke-linecap="round"/>
-    <line x1="55" y1="99" x2="90" y2="99" stroke="#00d4ff" stroke-width="1.5" stroke-opacity="0.6" stroke-linecap="round"/>
-    <line x1="55" y1="111" x2="90" y2="111" stroke="#00d4ff" stroke-width="1.5" stroke-opacity="0.6" stroke-linecap="round"/>
-    <line x1="55" y1="123" x2="78" y2="123" stroke="#00d4ff" stroke-width="1.5" stroke-opacity="0.4" stroke-linecap="round"/>
+  <!-- Spine bottom curve -->
+  <path d="M98 162 Q100 172 102 162" fill="none" stroke="url(#spineGrad)" stroke-width="4" stroke-linecap="round" filter="url(#glow)"/>
 
-    <!-- Page lines - right side -->
-    <line x1="110" y1="75" x2="145" y2="75" stroke="#7c3aed" stroke-width="1.5" stroke-opacity="0.6" stroke-linecap="round"/>
-    <line x1="110" y1="87" x2="145" y2="87" stroke="#7c3aed" stroke-width="1.5" stroke-opacity="0.6" stroke-linecap="round"/>
-    <line x1="110" y1="99" x2="145" y2="99" stroke="#7c3aed" stroke-width="1.5" stroke-opacity="0.6" stroke-linecap="round"/>
-    <line x1="110" y1="111" x2="145" y2="111" stroke="#7c3aed" stroke-width="1.5" stroke-opacity="0.6" stroke-linecap="round"/>
-    <line x1="110" y1="123" x2="133" y2="123" stroke="#7c3aed" stroke-width="1.5" stroke-opacity="0.4" stroke-linecap="round"/>
-
-    <!-- Bottom curve of spine -->
-    <path d="M97 145 Q100 152 103 145" fill="none" stroke="url(#bookGrad)" stroke-width="2.5" stroke-linecap="round"/>
-  </g>
-
-  <!-- Corner accent dots -->
-  <circle cx="42" cy="62" r="3" fill="#00d4ff" filter="url(#glowStrong)" opacity="0.8"/>
-  <circle cx="158" cy="62" r="3" fill="#7c3aed" filter="url(#glowStrong)" opacity="0.8"/>
-  <circle cx="42" cy="138" r="3" fill="#00d4ff" filter="url(#glowStrong)" opacity="0.6"/>
-  <circle cx="158" cy="138" r="3" fill="#7c3aed" filter="url(#glowStrong)" opacity="0.6"/>
-
-  <!-- Top glow dot on spine -->
-  <circle cx="100" cy="55" r="4" fill="#00d4ff" filter="url(#glowStrong)" opacity="0.9"/>
+  <!-- Glowing top dot on spine -->
+  <circle cx="100" cy="40" r="5" fill="#00d4ff" filter="url(#glow)"/>
 </svg>
