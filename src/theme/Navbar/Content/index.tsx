@@ -1,5 +1,5 @@
 /**
- * Swizzled Navbar Content — adds Language Switcher, User Menu, and optional Login button.
+ * Swizzled Navbar Content — futuristic SaaS header.
  */
 
 import React from 'react';
@@ -30,9 +30,9 @@ function NavbarItems({ items }: { items: any[] }) {
       {items.map((item, i) => (
         <ErrorCauseBoundary
           key={i}
-          onError={(error) =>
+          onError={error =>
             new Error(
-              `A theme navbar item failed to render.\nPlease double-check the following navbar item (themeConfig.navbar.items) of your Docusaurus config:\n${JSON.stringify(item, null, 2)}`,
+              `A theme navbar item failed to render.\n${JSON.stringify(item, null, 2)}`,
               { cause: error }
             )
           }
@@ -53,6 +53,7 @@ function NavbarContentLayout({ left, right }: { left: React.ReactNode; right: Re
   );
 }
 
+/** Small "Login" button — shown only when not authenticated */
 function LoginButton() {
   const { user } = useAuth();
   if (user) return null;
@@ -60,25 +61,75 @@ function LoginButton() {
     <Link
       to="/login"
       style={{
-        fontSize: '0.8rem',
+        display: 'inline-flex',
+        alignItems: 'center',
+        fontSize: '12px',
         fontWeight: 600,
+        fontFamily: 'Space Grotesk, sans-serif',
         padding: '5px 14px',
-        borderRadius: '6px',
-        border: '1px solid rgba(0,212,255,0.5)',
-        color: '#00d4ff',
+        borderRadius: '8px',
+        border: '1px solid rgba(0,212,255,0.3)',
+        color: '#7799bb',
         textDecoration: 'none',
-        marginLeft: '8px',
+        marginLeft: '4px',
+        letterSpacing: '0.04em',
         transition: 'all 0.2s',
-        letterSpacing: '0.03em',
       }}
       onMouseEnter={e => {
-        (e.currentTarget as HTMLElement).style.background = 'rgba(0,212,255,0.1)';
+        const el = e.currentTarget as HTMLElement;
+        el.style.color = '#00d4ff';
+        el.style.borderColor = 'rgba(0,212,255,0.6)';
+        el.style.background = 'rgba(0,212,255,0.06)';
       }}
       onMouseLeave={e => {
-        (e.currentTarget as HTMLElement).style.background = 'transparent';
+        const el = e.currentTarget as HTMLElement;
+        el.style.color = '#7799bb';
+        el.style.borderColor = 'rgba(0,212,255,0.3)';
+        el.style.background = 'transparent';
       }}
     >
       Login
+    </Link>
+  );
+}
+
+/** "Start Learning" CTA — shown when not authenticated */
+function StartLearningCTA() {
+  const { user } = useAuth();
+  if (user) return null;
+  return (
+    <Link
+      to="/docs/intro"
+      style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: '6px',
+        fontSize: '12px',
+        fontWeight: 700,
+        fontFamily: 'Space Grotesk, sans-serif',
+        padding: '7px 16px',
+        borderRadius: '8px',
+        background: 'linear-gradient(135deg, #00b4d8, #0077b6)',
+        color: '#fff',
+        textDecoration: 'none',
+        marginLeft: '8px',
+        letterSpacing: '0.04em',
+        boxShadow: '0 0 16px rgba(0,212,255,0.2)',
+        transition: 'all 0.2s',
+        whiteSpace: 'nowrap',
+      }}
+      onMouseEnter={e => {
+        const el = e.currentTarget as HTMLElement;
+        el.style.boxShadow = '0 0 24px rgba(0,212,255,0.4)';
+        el.style.transform = 'translateY(-1px)';
+      }}
+      onMouseLeave={e => {
+        const el = e.currentTarget as HTMLElement;
+        el.style.boxShadow = '0 0 16px rgba(0,212,255,0.2)';
+        el.style.transform = 'none';
+      }}
+    >
+      Start Learning →
     </Link>
   );
 }
@@ -102,15 +153,16 @@ export default function NavbarContent(): JSX.Element {
       right={
         <>
           <NavbarItems items={rightItems} />
-          <BrowserOnly>{() => <UserMenu />}</BrowserOnly>
-          <BrowserOnly>{() => <LoginButton />}</BrowserOnly>
-          <LanguageSwitcher />
-          <NavbarColorModeToggle className={styles.colorModeToggle} />
           {!searchBarItem && (
             <NavbarSearch>
               <div className="navbar__search" />
             </NavbarSearch>
           )}
+          <NavbarColorModeToggle className={styles.colorModeToggle} />
+          <LanguageSwitcher />
+          <BrowserOnly>{() => <LoginButton />}</BrowserOnly>
+          <BrowserOnly>{() => <UserMenu />}</BrowserOnly>
+          <BrowserOnly>{() => <StartLearningCTA />}</BrowserOnly>
         </>
       }
     />

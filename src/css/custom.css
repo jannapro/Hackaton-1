@@ -67,67 +67,129 @@
 }
 
 /* =============================================
-   NAVBAR STYLING - Compact & Clean
+   NAVBAR — Futuristic Glassmorphism
    ============================================= */
 
-/* Make navbar more compact */
 .navbar {
-  height: 40px;
-  min-height: 40px;
-  padding: 0 0.75rem;
+  height: 64px;
+  min-height: 64px;
+  padding: 0 1.5rem;
+  position: sticky;
+  top: 0;
+  z-index: 200;
+  backdrop-filter: blur(20px) saturate(1.4);
+  -webkit-backdrop-filter: blur(20px) saturate(1.4);
+  transition: background 0.3s, border-color 0.3s;
 }
 
 .navbar__inner {
   max-width: 100%;
+  height: 100%;
+  align-items: center;
 }
 
-/* Smaller logo */
+/* Logo */
 .navbar__logo {
-  height: 20px;
-  margin-right: 6px;
+  height: 28px;
+  margin-right: 10px;
+  filter: drop-shadow(0 0 6px rgba(0, 212, 255, 0.4));
+  transition: filter 0.25s;
+}
+.navbar__logo:hover {
+  filter: drop-shadow(0 0 12px rgba(0, 212, 255, 0.7));
 }
 
-/* Smaller title */
+/* Brand title */
 .navbar__title {
-  font-size: 12px;
-  font-weight: 600;
+  font-family: 'Orbitron', sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  transition: color 0.2s;
 }
 
-/* Compact navbar items */
+/* Nav items */
 .navbar__items {
-  gap: 4px;
+  gap: 2px;
+  align-items: center;
 }
 
 .navbar__item {
-  font-size: 11px;
-  padding: 2px 6px;
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  padding: 6px 12px;
+  border-radius: 6px;
+  transition: background 0.2s, color 0.2s;
 }
 
-/* Smaller toggle button */
+.navbar__link {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  transition: color 0.2s;
+}
+
+/* Buttons in navbar */
 .navbar .clean-btn {
-  padding: 4px;
+  padding: 6px;
+  border-radius: 8px;
+  transition: background 0.2s, box-shadow 0.2s;
+}
+.navbar .clean-btn:hover {
+  box-shadow: 0 0 12px rgba(0, 212, 255, 0.2);
 }
 
 .navbar svg {
-  width: 16px;
-  height: 16px;
+  width: 18px;
+  height: 18px;
 }
 
-/* Dark mode navbar */
-[data-theme='dark'] .navbar {
-  background: #0a0a0a;
-  border-bottom: 1px solid rgba(0, 212, 255, 0.1);
-}
-
-/* Light mode navbar */
-[data-theme='light'] .navbar {
-  background: #ffffff;
-  border-bottom: 1px solid #e5e7eb;
-}
-
-/* Color mode toggle smaller */
+/* Color mode toggle */
 .navbar .colorModeToggle {
-  margin-left: 8px;
+  margin: 0 4px;
+}
+
+/* ── Dark mode ── */
+[data-theme='dark'] .navbar {
+  background: rgba(6, 8, 16, 0.82);
+  border-bottom: 1px solid rgba(0, 212, 255, 0.1);
+  box-shadow: 0 1px 40px rgba(0, 0, 0, 0.4);
+}
+[data-theme='dark'] .navbar__title {
+  background: linear-gradient(90deg, #e8eeff, #00d4ff);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+[data-theme='dark'] .navbar__item:hover,
+[data-theme='dark'] .navbar__link:hover {
+  color: #00d4ff;
+  background: rgba(0, 212, 255, 0.06);
+}
+[data-theme='dark'] .navbar .clean-btn:hover {
+  background: rgba(0, 212, 255, 0.08);
+}
+
+/* ── Light mode ── */
+[data-theme='light'] .navbar {
+  background: rgba(255, 255, 255, 0.88);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+  box-shadow: 0 1px 20px rgba(0, 0, 0, 0.06);
+}
+[data-theme='light'] .navbar__title {
+  color: #0a1628;
+}
+[data-theme='light'] .navbar__item:hover,
+[data-theme='light'] .navbar__link:hover {
+  color: #2563eb;
+  background: rgba(37, 99, 235, 0.06);
+}
+
+/* Mobile sidebar toggle */
+.navbar__toggle {
+  margin-right: 8px;
 }
 
 /* =============================================
