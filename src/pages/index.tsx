@@ -4,6 +4,12 @@ import clsx from 'clsx';
 import Link from '@docusaurus/Link';
 import useDocusaurusContext from '@docusaurus/useDocusaurusContext';
 import Layout from '@theme/Layout';
+import RoboIcon from '@site/src/components/RoboIcon';
+import {
+  CpuChipIcon, NetworkGraphIcon, CubeWireframeIcon, CameraApertureIcon,
+  CircuitBrainIcon, GpuBoltIcon, RobotLimbIcon, SpeechWaveIcon,
+  RobotHeadIcon, GearIcon, NeuralNetIcon, HexagonNodeIcon,
+} from '@site/src/components/icons';
 
 import styles from './index.module.css';
 
@@ -194,11 +200,27 @@ function Hero() {
 
 // ─── What You Will Build ──────────────────────────────────────────────────────
 
-const outcomes = [
-  { icon: '🦾', title: 'Autonomous Humanoid Agent', desc: 'A full stack robot that perceives, reasons, and acts in the real world using AI.' },
-  { icon: '🔗', title: 'ROS 2 Robot Systems', desc: 'Production-grade nodes, topics, services, and actions with Python rclpy.' },
-  { icon: '🌐', title: 'Digital Twin Simulations', desc: 'High-fidelity Gazebo and Isaac Sim environments that mirror real hardware.' },
-  { icon: '👁️', title: 'VLA-Powered Robots', desc: 'Vision-Language-Action models that understand language and manipulate objects.' },
+const outcomes: { icon: ReactNode; variant: 'cyan' | 'purple' | 'green' | 'amber'; title: string; desc: string }[] = [
+  {
+    icon: <CpuChipIcon />, variant: 'cyan',
+    title: 'Autonomous Humanoid Agent',
+    desc: 'A full stack robot that perceives, reasons, and acts in the real world using AI.',
+  },
+  {
+    icon: <NetworkGraphIcon />, variant: 'purple',
+    title: 'ROS 2 Robot Systems',
+    desc: 'Production-grade nodes, topics, services, and actions with Python rclpy.',
+  },
+  {
+    icon: <CubeWireframeIcon />, variant: 'cyan',
+    title: 'Digital Twin Simulations',
+    desc: 'High-fidelity Gazebo and Isaac Sim environments that mirror real hardware.',
+  },
+  {
+    icon: <CameraApertureIcon />, variant: 'purple',
+    title: 'VLA-Powered Robots',
+    desc: 'Vision-Language-Action models that understand language and manipulate objects.',
+  },
 ];
 
 function useIntersection(ref: React.RefObject<Element>, threshold = 0.15) {
@@ -233,7 +255,9 @@ function WhatYouBuild() {
               className={clsx(styles.outcomeCard, visible[i] && styles.cardVisible)}
               style={{ transitionDelay: `${i * 0.1}s` }}
             >
-              <div className={styles.outcomeIcon}>{o.icon}</div>
+              <div className={styles.outcomeIcon}>
+                <RoboIcon variant={o.variant} size="lg" animation="glow">{o.icon}</RoboIcon>
+              </div>
               <h3 className={styles.outcomeTitle}>{o.title}</h3>
               <p className={styles.outcomeDesc}>{o.desc}</p>
               <div className={styles.cardGlow} />
@@ -247,51 +271,63 @@ function WhatYouBuild() {
 
 // ─── Course Roadmap ───────────────────────────────────────────────────────────
 
-const modules = [
+const modules: {
+  number: string; icon: ReactNode; variant: 'cyan' | 'purple' | 'green' | 'amber';
+  title: string; desc: string; link: string;
+  difficulty: string; lessons: number; labs: number; quizzes: number;
+}[] = [
   {
-    number: '01', icon: '🧠', title: 'Physical AI Foundations',
+    number: '01', icon: <CircuitBrainIcon />, variant: 'cyan',
+    title: 'Physical AI Foundations',
     desc: 'Core concepts of embodied intelligence, sensor-actuator loops, and real-world AI systems.',
     link: 'docs/physical-ai-foundations',
     difficulty: 'Beginner', lessons: 12, labs: 4, quizzes: 2,
   },
   {
-    number: '02', icon: '🔗', title: 'ROS 2: Robotic Nervous System',
+    number: '02', icon: <NetworkGraphIcon />, variant: 'cyan',
+    title: 'ROS 2: Robotic Nervous System',
     desc: 'Master ROS 2 nodes, topics, services, actions, and QoS for robust robot communication.',
     link: 'docs/ros2-robotic-nervous-system',
     difficulty: 'Beginner', lessons: 14, labs: 5, quizzes: 3,
   },
   {
-    number: '03', icon: '🌐', title: 'Digital Twins: Gazebo & Unity',
+    number: '03', icon: <CubeWireframeIcon />, variant: 'cyan',
+    title: 'Digital Twins: Gazebo & Unity',
     desc: 'Build high-fidelity simulations with Gazebo physics and Unity visualization.',
     link: 'docs/digital-twins-gazebo-unity',
     difficulty: 'Intermediate', lessons: 10, labs: 6, quizzes: 2,
   },
   {
-    number: '04', icon: '⚡', title: 'NVIDIA Isaac & Robot Intelligence',
+    number: '04', icon: <GpuBoltIcon />, variant: 'purple',
+    title: 'NVIDIA Isaac & Robot Intelligence',
     desc: 'Leverage Isaac Sim, Isaac ROS, and GPU-accelerated perception pipelines.',
     link: 'docs/nvidia-isaac-robot-intelligence',
     difficulty: 'Intermediate', lessons: 11, labs: 5, quizzes: 2,
   },
   {
-    number: '05', icon: '👁️', title: 'Vision-Language-Action Systems',
+    number: '05', icon: <CameraApertureIcon />, variant: 'cyan',
+    title: 'Vision-Language-Action Systems',
     desc: 'Integrate VLMs for semantic understanding and language-guided manipulation.',
     link: 'docs/vision-language-action',
     difficulty: 'Advanced', lessons: 9, labs: 4, quizzes: 2,
   },
   {
-    number: '06', icon: '🦿', title: 'Humanoid Locomotion & Manipulation',
+    number: '06', icon: <RobotLimbIcon />, variant: 'cyan',
+    title: 'Humanoid Locomotion & Manipulation',
     desc: 'Bipedal walking, balance control, whole-body coordination, and dexterous grasping.',
     link: 'docs/humanoid-locomotion-manipulation',
     difficulty: 'Advanced', lessons: 13, labs: 6, quizzes: 3,
   },
   {
-    number: '07', icon: '💬', title: 'Conversational Robotics',
+    number: '07', icon: <SpeechWaveIcon />, variant: 'green',
+    title: 'Conversational Robotics',
     desc: 'Speech recognition, NLU, dialogue management, and multimodal human-robot interaction.',
     link: 'docs/conversational-robotics',
     difficulty: 'Intermediate', lessons: 8, labs: 3, quizzes: 2,
   },
   {
-    number: '08', icon: '🤖', title: 'Capstone: Autonomous Agent',
+    number: '08', icon: <RobotHeadIcon />, variant: 'purple',
+    title: 'Capstone: Autonomous Agent',
     desc: 'Build a complete autonomous humanoid with behavior trees and integrated subsystems.',
     link: 'docs/capstone-autonomous-agent',
     difficulty: 'Advanced', lessons: 10, labs: 8, quizzes: 1,
@@ -333,7 +369,9 @@ function CourseRoadmap() {
                   {m.difficulty}
                 </span>
               </div>
-              <div className={styles.moduleIcon}>{m.icon}</div>
+              <div className={styles.moduleIcon}>
+                <RoboIcon variant={m.variant} size="md" animation="glow">{m.icon}</RoboIcon>
+              </div>
               <h3 className={styles.moduleTitle}>{m.title}</h3>
               <p className={styles.moduleDesc}>{m.desc}</p>
               <div className={styles.moduleStats}>
@@ -357,19 +395,25 @@ function CourseRoadmap() {
 
 // ─── Simulation Labs ──────────────────────────────────────────────────────────
 
-const labs = [
+const labs: {
+  icon: ReactNode; variant: 'cyan' | 'purple' | 'green' | 'amber';
+  color: string; title: string; desc: string; cta: string; link: string;
+}[] = [
   {
-    icon: '⚙️', color: '#00d4ff', title: 'Gazebo Physics Sandbox',
+    icon: <GearIcon />, variant: 'cyan', color: '#00d4ff',
+    title: 'Gazebo Physics Sandbox',
     desc: 'Run real-time physics simulations of humanoid robots. Experiment with gravity, friction, and joint dynamics.',
     cta: 'Launch Simulation', link: 'docs/digital-twins-gazebo-unity',
   },
   {
-    icon: '🧬', color: '#a855f7', title: 'Isaac Sim Neural Training',
+    icon: <NeuralNetIcon />, variant: 'purple', color: '#a855f7',
+    title: 'Isaac Sim Neural Training',
     desc: 'GPU-accelerated reinforcement learning for locomotion, grasping, and navigation tasks.',
     cta: 'Open Lab', link: 'docs/nvidia-isaac-robot-intelligence',
   },
   {
-    icon: '🔴', color: '#22c55e', title: 'ROS 2 Live Playground',
+    icon: <HexagonNodeIcon />, variant: 'green', color: '#22c55e',
+    title: 'ROS 2 Live Playground',
     desc: 'Publish topics, call services, and watch your robot respond — all in the browser.',
     cta: 'Try It Now', link: 'docs/ros2-robotic-nervous-system',
   },
@@ -396,7 +440,9 @@ function SimLabs() {
               style={{ transitionDelay: `${i * 0.12}s` }}
             >
               <div className={styles.labAccent} style={{ background: lab.color }} />
-              <div className={styles.labIcon}>{lab.icon}</div>
+              <div className={styles.labIcon}>
+                <RoboIcon variant={lab.variant} size="lg" animation="glow">{lab.icon}</RoboIcon>
+              </div>
               <h3 className={styles.labTitle}>{lab.title}</h3>
               <p className={styles.labDesc}>{lab.desc}</p>
               <Link to={lab.link} className={styles.labBtn} style={{ borderColor: lab.color + '60', color: lab.color }}>
@@ -443,7 +489,9 @@ function AIMentor() {
           <div className={styles.mentorRight}>
             <div className={styles.chatDemo}>
               <div className={styles.chatHeader}>
-                <div className={styles.chatAvatar}>🤖</div>
+                <div className={styles.chatAvatar}>
+                  <RoboIcon variant="cyan" size="sm" animation="pulse"><RobotHeadIcon /></RoboIcon>
+                </div>
                 <div>
                   <div className={styles.chatName}>Physical AI Assistant</div>
                   <div className={styles.chatStatus}><span className={styles.onlineDot} />Online</div>
